@@ -93,7 +93,7 @@ class ChessBoard:
 
     ## Converting between FENs and boardstates.
 
-    def FentoBoardstate(self, fen):
+    def FenToBoardstate(self, fen):
         boardState = []
         fenList = fen.split("/")
 
@@ -109,6 +109,25 @@ class ChessBoard:
             boardState.append(line)
 
         return boardState
+
+
+    def BoardstateToFen(boardState):
+        fen = ""
+        for line in boardState:
+            subfen = []
+            for i in range(len(line)):
+                if line[i] != ".":
+                    subfen.append(line[i])
+                else:
+                    if subfen == []:
+                        subfen.append("1")
+                    elif subfen[-1].isnumeric():
+                        subfen[-1] = str(int(subfen[-1])+1)
+                    else:
+                        subfen.append("1")
+            fen += "".join(subfen) + "/"
+        return fen[:-1]
+
 
     ##
 ###
