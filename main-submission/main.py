@@ -52,7 +52,7 @@ board = ChessBoard(words, 8, 8)
 boardStates = []
 for i in range(3):
     if fens[i] in fenList:
-        boardStates.append(board.FentoBoardstate(fens[i]))
+        boardStates.append(board.FenToBoardstate(fens[i]))
     else:
         boardStates.append(defaultBoardState)
 
