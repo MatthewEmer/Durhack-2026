@@ -8,7 +8,7 @@ def GetWords():
 
 def GetFens():
     print("Enter the fens you want to send, separated by spaces.")
-    userInput = input(": ").lower()
+    userInput = input(": ")
     fens = userInput.split(' ')
 
     return fens
