@@ -12,7 +12,7 @@ import numpy as np
 from chess_fen import load_markers
 
 
-PIECE_MARKER_INDEX = {symbol: index for index, symbol in enumerate("KQRBNPkqrbnp")}
+PIECE_MARKER_INDEX = {symbol: index for index, symbol in enumerate("kqrbnpKQRBNP")}
 
 
 def parse_fen_board(fen: str) -> list[list[str | None]]:
@@ -41,7 +41,7 @@ def render_position(
     fen: str,
     marker_file: Path = Path("custom_markers.csv"),
     board_size: int = 960,
-    marker_fraction: float = 2.0 / 3.0,
+    marker_fraction: float = 0.5,
     rotation: int = 0,
 ) -> np.ndarray:
     if board_size < 8:
@@ -86,7 +86,7 @@ def main() -> int:
     parser.add_argument("output", type=Path, help="output PNG path")
     parser.add_argument("-m", "--markers", type=Path, default=Path("custom_markers.csv"))
     parser.add_argument("--size", type=int, default=960, help="board width and height in pixels")
-    parser.add_argument("--marker-fraction", type=float, default=2.0 / 3.0,
+    parser.add_argument("--marker-fraction", type=float, default=0.5,
                         help="marker width as a fraction of a board square")
     parser.add_argument("--rotation", type=int, choices=range(4), default=0,
                         help="rotate every marker by 90-degree turns")

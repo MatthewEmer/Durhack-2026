@@ -29,7 +29,7 @@ def make_test_image(
     seed: int = 2026,
 ) -> tuple[np.ndarray, np.ndarray]:
     rng = np.random.default_rng(seed)
-    board = render_position(fen, board_size=960, marker_fraction=0.58)
+    board = render_position(fen, board_size=960, marker_fraction=0.5)
     board = add_print_texture(board, seed)
 
     width, height = output_size
