@@ -13,14 +13,17 @@ def load_data():
 
 def fen_from_word(word):
     words, fens = load_data()
-
-    idx = words.index(word)
+    try:
+        idx = words.index(word)
+    except ValueError:
+        return -1
     return fens[idx]
 
 
 def word_from_fen(fen):
     words, fens = load_data()
-    idx = fens.index(fen)
+    try:   
+        idx = fens.index(fen)
+    except ValueError:
+        return -1
     return words[idx]
-
-print(word_from_fen("rnbqkbnr/pp1ppp1p/6p1/2pP4/8/5NP1/PPP1PPBP/RNBQK2R"))
