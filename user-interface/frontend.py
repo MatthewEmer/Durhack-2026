@@ -4,40 +4,65 @@ screen = turtle.Screen()
 pen = turtle.Turtle()
 
 
-def DrawBoard(squareSize):
-    offset = 4 * squareSize
+class ChessBoard:
+    ## Setting up the class.
 
-    for col in range(8):
-        pen.up()
-        pen.setpos(-offset, (squareSize * col) - offset)
-        pen.down()
+    squaresInEachRow:int
+    squaresInEachColumn:int
 
-        DrawCol(col, squareSize)
+    squareSize:float
 
-    pen.hideturtle()   
-
-
-def DrawCol(col, squareSize):
-    for row in range(8):
-        if (col + row) % 2 == 0:
-            pen.fillcolor("black")
-        else:
-            pen.fillcolor("white")
-
-        pen.begin_fill()
-        DrawSquare(squareSize)
-        pen.end_fill()
+    rowOffset:float
+    columnOffset:float
 
 
-def DrawSquare(size):
-    for i in range(4):
-        pen.forward(size)
-        pen.left(90)
-    pen.forward(size)
+    def __init__(self, squareSize=50.0, squaresInEachRow=8, squaresInEachColumn=8):
+        self.squareSize = squareSize
+        self.squaresInEachRow = squaresInEachRow
+        self.squaresInEachColumn = squaresInEachColumn
+
+        self.rowOffset = (float(squaresInEachRow) / 2) * squareSize
+        self.columnOffset = (float(squaresInEachColumn) / 2) * squareSize
+
+    ##
+
+
+    ## Drawing an instance of the board.
+
+    def DrawBoard(self):
+        for columnNumber in range(self.squaresInEachColumn):
+            pen.up()
+            pen.setpos(-self.rowOffset, (self.squareSize * columnNumber) - self.columnOffset)
+            pen.down()
+
+            self._DrawCol(columnNumber)
+
+        pen.hideturtle()   
+
+
+    def _DrawCol(self, columnNumber):
+        for rowNumber in range(self.squaresInEachRow):
+            if (rowNumber + columnNumber) % 2 == 0:
+                pen.fillcolor("black")
+            else:
+                pen.fillcolor("white")
+
+            pen.begin_fill()
+            self._DrawSquare()
+            pen.end_fill()
+
+
+    def _DrawSquare(self):
+        for i in range(4):
+            pen.forward(self.squareSize)
+            pen.left(90)
+        pen.forward(self.squareSize)
+
+    ##
 
 
 screen.setup(600, 600)
 pen.speed(0)
 
-DrawBoard(50)
-input("")
+chessBoard = ChessBoard()
+chessBoard.DrawBoard()
