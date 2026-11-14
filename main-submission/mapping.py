@@ -1,6 +1,7 @@
 ## Importing libraries.
  
 import csv
+import copy
 
 ##
 
@@ -21,12 +22,24 @@ class WordstoFensConverter:
 
 
     def WordToFen(self, word):
-        wordIndex = self._words.index(word)
-        return self._fens[wordIndex]
+        try:
+            wordIndex = self._wordList.index(word)
+            return self._fens[wordIndex]
+        except:
+            print("Error", word)
+            return ""
 
 
     def FenToWord(self, fen):
-        fenIndex = self._fens.index(fen)
-        return self._wordList[fenIndex]
+        try:
+            fenIndex = self._fens.index(fen)
+            return self._wordList[fenIndex]
+        except:
+            print("Error", fen)
+            return ""
+
+
+    def GetFens(self): return copy.deepcopy(self._fens)
+    def GetWords(self): return copy.deepcopy(self._wordList)
 
 ##

@@ -1,12 +1,12 @@
-## Importing the libraries.
+### Importing the libraries.
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
-##
+###
 
 
-## Setting default variables as examples.
+### Setting default variables as examples.
 
 defaultBoardState = [
     ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
@@ -21,12 +21,15 @@ defaultBoardState = [
 defaultFenString = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
 allowedPieceCharacters = "KQRBNPkqrbnp"
 
-##
+###
 
 
-## Chess board class.
+
+### Chess board class.
 
 class ChessBoard:
+    ## Setup.
+
     _pieces = {'K': '♔', 'Q': '♕', 'R': '♖', 'B': '♗', 'N': '♘', 'P': '♙', 'k': '♚', 'q': '♛', 'r': '♜', 'b': '♝', 'n': '♞', 'p': '♟'}
     _board:list
 
@@ -46,6 +49,10 @@ class ChessBoard:
         
         self._titles = titles
 
+    ##
+
+
+    ## Drawing the board and pieces.
 
     def DrawBoards(self, boardStates):
         for boardNumber in range(len(boardStates)):
@@ -81,4 +88,27 @@ class ChessBoard:
         if piece != ".":
             axis.text(columnNumber + 0.5, 7 - rowNumber + 0.5, self._pieces[piece], fontsize=20, ha="center", va="center", color="white" if piece.isupper() else "black")
 
-##
+    ##
+
+
+    ## Converting between FENs and boardstates.
+
+    def FentoBoardstate(self, fen):
+        boardState = []
+        fenList = fen.split("/")
+
+        for i in range(len(fenList)):
+            spaces = list(fenList[i])
+            line = []
+            for j in range(len(spaces)):
+                if spaces[j].isnumeric():
+                    for k in range(int(spaces[j])):
+                        line.append(".")
+                else:
+                    line.append(spaces[j])
+            boardState.append(line)
+
+        return boardState
+
+    ##
+###
