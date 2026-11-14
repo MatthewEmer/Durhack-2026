@@ -22,8 +22,20 @@ def fen_to_boardState(fen):
         boardState.append(line)
     return boardState
 
-fen = "3b3r/1k1p4/pp6/1P3R2/2PP4/1P1K4/7p/7N"
-print(fen)
-print()
-for line in fen_to_boardState(fen):
-    print(line)
+def boardState_to_fen(boardState):
+    fen = ""
+    for line in boardState:
+        subfen = []
+        for i in range(len(line)):
+            if line[i] != ".":
+                subfen.append(line[i])
+            else:
+                if subfen == []:
+                    subfen.append("1")
+                elif subfen[-1].isnumeric():
+                    subfen[-1] = str(int(subfen[-1])+1)
+                else:
+                    subfen.append("1")
+        fen += "".join(subfen) + "/"
+    return fen[:-1]
+
