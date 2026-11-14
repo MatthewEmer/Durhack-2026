@@ -1,11 +1,6 @@
-import sys
-
-sys.path.append('../aruco')
-
 ## Importing files.
 
-from boardGenerator import ChessBoard
-from boardGenerator import defaultBoardState
+from boardGenerator import ChessBoard, defaultBoardState
 from mapping import WordstoFensConverter
 from inputOutputFormatting import *
 from chess_fen import decode_image
@@ -15,7 +10,7 @@ from chess_fen import decode_image
 
 ## Setup.
 
-converter = WordstoFensConverter("durhack_word_list.csv", "fen_list.txt")
+converter = WordstoFensConverter("./main-submission/data-files/durhack_word_list.csv", "./main-submission/data-files/fen_list.txt")
 fenList = converter.GetFens()
 wordList = converter.GetWords()
 
