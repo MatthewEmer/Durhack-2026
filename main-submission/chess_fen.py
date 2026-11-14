@@ -151,10 +151,10 @@ def find_grid_detections(image, patterns, board_corners, max_errors):
     for row in range(8):
         for column in range(8):
             best = None
-            for fraction in np.arange(0.4, 0.91, 0.05):
+            for fraction in np.arange(0.5, 0.7, 0.05):
                 inset = (1.0 - fraction) / 2.0
-                for offset_x in np.arange(-0.08, 0.081, 0.04):
-                    for offset_y in np.arange(-0.08, 0.081, 0.04):
+                for offset_x in np.arange(-0.04, 0.04, 0.04):
+                    for offset_y in np.arange(-0.04, 0.04, 0.04):
                         left = (column + inset + offset_x) / 8.0
                         top = (row + inset + offset_y) / 8.0
                         right = (column + 1.0 - inset + offset_x) / 8.0
@@ -283,7 +283,6 @@ def make_fen(image, detections, board_corners):
 
 
 def rotate_image_and_corners(image, corners, turns):
-    import numpy as np
 
     height, width = image.shape[:2]
     rotated_image = np.rot90(image, turns).copy()
@@ -314,40 +313,25 @@ def orientation_score(fen):
 
 def decode_image(
     image_path: str | Path,
-    marker_file: str | Path | None = None,
-    board_corners=None,
     min_area: float = 100.0,
     max_errors: int = 12,
     annotated: str | Path | None = None,
-    rotation: int | None = None,
 ) -> str:
-    """Decode a chess position from an image path and return its FEN string.
-
-    ``board_corners`` may contain four points in TL, TR, BR, BL order. If it is
-    omitted, the board boundary is detected automatically.
-    """
+    """Decode a chess position from an image path and return its FEN string."""
 
     image_path = Path(image_path)
-    marker_path = Path(marker_file) if marker_file else DEFAULT_MARKER_FILE
+    marker_path = DEFAULT_MARKER_FILE
     image = cv2.imread(str(image_path))
     if image is None:
         raise ValueError(f"could not read image: {image_path}")
     patterns = load_markers(marker_path)
-    if rotation is not None and rotation not in range(4):
-        raise ValueError("rotation must be one of 0, 1, 2, or 3")
 
     candidates = []
-    turns_to_try = (rotation,) if rotation is not None else range(4)
+    turns_to_try = range(4)
     for turns in turns_to_try:
         oriented_image = np.rot90(image, turns).copy()
-        if board_corners is None:
-            oriented_corners = board_corners_from_image(oriented_image)
-        else:
-            _, oriented_corners = rotate_image_and_corners(image, board_corners, turns)
-        detections = find_grid_detections(oriented_image, patterns, oriented_corners,
-                          max_errors)
-        if not detections:
-            detections = find_marker_detections(oriented_image, patterns, max_errors, min_area)
+        oriented_corners = board_corners_from_image(oriented_image)
+        detections = find_marker_detections(oriented_image, patterns, max_errors, min_area)
         fen = make_fen(oriented_image, detections, oriented_corners)
         candidates.append((orientation_score(fen), len(detections),
                            -sum(detection.score for detection in detections),
@@ -374,8 +358,6 @@ def main() -> int:
     parser.add_argument("image", type=Path, help="photograph containing the chessboard")
     parser.add_argument("-m", "--markers", type=Path,
                         default=DEFAULT_MARKER_FILE)
-    parser.add_argument("--board-corners", nargs=4, metavar="X,Y",
-                        help="board corners in FEN order: TL TR BR BL")
     parser.add_argument("--min-area", type=float, default=100.0)
     parser.add_argument("--max-errors", type=int, default=12,
                         help="maximum differing cells allowed when matching a marker")
@@ -386,15 +368,8 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
-        import cv2
-    except ImportError:
-        print("OpenCV is required: python -m pip install opencv-python", file=sys.stderr)
-        return 2
-
-    try:
-        corners = parse_corners(args.board_corners) if args.board_corners else None
-        print(decode_image(args.image, args.markers, corners, args.min_area,
-                           args.max_errors, args.annotated, args.rotation))
+        print(decode_image(args.image, args.min_area,
+                           args.max_errors, args.annotated))
     except (OSError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
