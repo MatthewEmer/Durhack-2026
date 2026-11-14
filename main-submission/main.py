@@ -10,7 +10,7 @@ from chess_fen import decode_image
 
 ## Setup.
 
-converter = WordstoFensConverter("./main-submission/data-files/durhack_word_list.csv", "./main-submission/data-files/fen_list.txt")
+converter = WordstoFensConverter("data-files/durhack_word_list.csv", "data-files/fen_list.txt")
 fenList = converter.GetFens()
 wordList = converter.GetWords()
 
