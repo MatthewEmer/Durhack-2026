@@ -88,6 +88,7 @@ def identify_marker(cell_bits, patterns: list[list[list[int]]], max_errors: int)
 def sample_marker(gray, corners, patterns, max_errors):
     import cv2
     import numpy as np
+    import numpy as np
 
     destination = np.array(
         [[0, 0], [MARKER_SIZE, 0], [MARKER_SIZE, MARKER_SIZE], [0, MARKER_SIZE]],
@@ -149,7 +150,7 @@ def find_grid_detections(image, patterns, board_corners, max_errors):
     for row in range(8):
         for column in range(8):
             best = None
-            for fraction in (0.55, 2.0 / 3.0, 0.75, 0.85, 0.95):
+            for fraction in (0.5, 0.55, 2.0 / 3.0, 0.75, 0.85, 0.95):
                 inset = (1.0 - fraction) / 2.0
                 left = (column + inset) / 8.0
                 top = (row + inset) / 8.0
@@ -270,13 +271,56 @@ def make_fen(image, detections, board_corners):
         if empty:
             rank += str(empty)
         ranks.append(rank)
-    return "/".join(ranks) + " w - - 0 1"
+    return "/".join(ranks)
+
+
+def decode_image(
+    image_path: str | Path,
+    marker_file: str | Path | None = None,
+    board_corners=None,
+    min_area: float = 100.0,
+    max_errors: int = 12,
+    annotated: str | Path | None = None,
+) -> str:
+    """Decode a chess position from an image path and return its FEN string.
+
+    ``board_corners`` may contain four points in TL, TR, BR, BL order. If it is
+    omitted, the board boundary is detected automatically.
+    """
+    import cv2
+    import numpy as np
+
+    image_path = Path(image_path)
+    marker_path = Path(marker_file) if marker_file else Path(__file__).with_name("custom_markers.csv")
+    image = cv2.imread(str(image_path))
+    if image is None:
+        raise ValueError(f"could not read image: {image_path}")
+    patterns = load_markers(marker_path)
+    corners = board_corners if board_corners is not None else board_corners_from_image(image)
+    corners = np.asarray(corners, dtype="float32")
+    detections = find_grid_detections(image, patterns, corners, max_errors)
+    if not detections:
+        detections = find_marker_detections(image, patterns, max_errors, min_area)
+
+    if annotated is not None:
+        annotated_path = Path(annotated)
+        for detection in detections:
+            cv2.polylines(image, [detection.corners.astype("int32")], True, (0, 180, 0), 2)
+            cv2.putText(image, detection.symbol, tuple(map(int, detection.center)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+        cv2.polylines(image, [corners.astype("int32")], True, (255, 0, 0), 3)
+        annotated_path.parent.mkdir(parents=True, exist_ok=True)
+        if not cv2.imwrite(str(annotated_path), image):
+            raise OSError(f"could not write annotated image: {annotated_path}")
+
+    return make_fen(image, detections, corners)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("image", type=Path, help="photograph containing the chessboard")
-    parser.add_argument("-m", "--markers", type=Path, default=Path("custom_markers.csv"))
+    parser.add_argument("-m", "--markers", type=Path,
+                        default=Path(__file__).with_name("custom_markers.csv"))
     parser.add_argument("--board-corners", nargs=4, metavar="X,Y",
                         help="board corners in FEN order: TL TR BR BL")
     parser.add_argument("--min-area", type=float, default=100.0)
@@ -293,22 +337,9 @@ def main() -> int:
         return 2
 
     try:
-        patterns = load_markers(args.markers)
-        image = cv2.imread(str(args.image))
-        if image is None:
-            raise ValueError(f"could not read image: {args.image}")
-        corners = parse_corners(args.board_corners) if args.board_corners else board_corners_from_image(image)
-        detections = find_grid_detections(image, patterns, corners, args.max_errors)
-        if not detections:
-            detections = find_marker_detections(image, patterns, args.max_errors, args.min_area)
-        print(make_fen(image, detections, corners))
-        if args.annotated:
-            for detection in detections:
-                cv2.polylines(image, [detection.corners.astype("int32")], True, (0, 180, 0), 2)
-                cv2.putText(image, detection.symbol, tuple(map(int, detection.center)),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
-            cv2.polylines(image, [corners.astype("int32")], True, (255, 0, 0), 3)
-            cv2.imwrite(str(args.annotated), image)
+        corners = parse_corners(args.board_corners) if args.board_corners else None
+        print(decode_image(args.image, args.markers, corners, args.min_area,
+                           args.max_errors, args.annotated))
     except (OSError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1

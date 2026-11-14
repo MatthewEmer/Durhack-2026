@@ -1,9 +1,14 @@
+import sys
+
+sys.path.append('../aruco')
+
 ## Importing files.
 
 from boardGenerator import ChessBoard
 from boardGenerator import defaultBoardState
 from mapping import WordstoFensConverter
 from inputOutputFormatting import *
+from chess_fen import decode_image
 
 ##
 
@@ -35,13 +40,13 @@ if mode == "encode":
 ## Decoding mode.
 
 if mode == "decode":
-    fens = GetFens()
-    words = []
-    for i in range(3):
-        words.append(converter.FenToWord(fens[i]))
-
-    print(words)
-
+    imgs = GetImgs()
+    words=[]
+    fens=[]
+    for img in imgs:
+        fen = decode_image(img)
+        fens.append(fen)
+        words.append(converter.FenToWord(fen))
 ##
 
 

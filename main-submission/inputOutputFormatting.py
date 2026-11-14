@@ -12,7 +12,12 @@ def GetFens():
     fens = userInput.split(' ')
 
     return fens
-
+    
+def GetImgs():
+    print("Enter the images you want to decode, separated by spaces. ")
+    userInput = input(": ")
+    imgs = userInput.split(' ')
+    return imgs
 
 def GetMode():
     modes = ["encode", "decode"]
