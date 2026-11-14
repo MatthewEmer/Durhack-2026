@@ -1,5 +1,3 @@
 # Durhack-2026
 
-## Challenge - Company
-
-[Information]
+https://elevenlabs.io/docs/api-reference/music/compose-detailed
