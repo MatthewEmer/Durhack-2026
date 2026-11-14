@@ -12,12 +12,19 @@ def GetFens():
     fens = userInput.split(' ')
 
     return fens
-    
+
+
 def GetImgs():
+    imageFilePath = "./main-submission/Images/"
+
     print("Enter the images you want to decode, separated by spaces. ")
     userInput = input(": ")
     imgs = userInput.split(' ')
+
+    for i in range(len(imgs)):
+        imgs[i] = imageFilePath + imgs[i]
     return imgs
+
 
 def GetMode():
     modes = ["encode", "decode"]

@@ -1,7 +1,3 @@
-import sys
-
-sys.path.append('../aruco')
-
 ## Importing files.
 
 from boardGenerator import ChessBoard
@@ -9,6 +5,8 @@ from boardGenerator import defaultBoardState
 from mapping import WordstoFensConverter
 from inputOutputFormatting import *
 from chess_fen import decode_image
+
+import sys
 
 ##
 
