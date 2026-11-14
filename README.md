@@ -5,5 +5,3 @@
 ## Description
 
 TO BE ADDED
-
-## Development & Maintenance
