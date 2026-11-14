@@ -1,0 +1,2021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CipherWave — Audio Phrase Steganography Studio</title>
+  <style>
+    /* =========================================================================
+       DESIGN TOKENS & DARK STUDIO THEME (ZERO EXTERNAL DEPENDENCIES)
+       ========================================================================= */
+    :root {
+      --bg-canvas: #060913;
+      --bg-panel: rgba(13, 19, 34, 0.84);
+      --bg-surface: #0b1120;
+      --bg-surface-hover: #11192e;
+      --bg-elevated: #162038;
+      --border-subtle: rgba(148, 163, 184, 0.14);
+      --border-strong: rgba(148, 163, 184, 0.28);
+      --border-focus: #38bdf8;
+
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+
+      --accent-indigo: #6366f1;
+      --accent-indigo-hover: #818cf8;
+      --accent-cyan: #06b6d4;
+      --accent-cyan-bright: #38bdf8;
+
+      --status-success-bg: rgba(16, 185, 129, 0.12);
+      --status-success-border: rgba(16, 185, 129, 0.35);
+      --status-success-text: #6ee7b7;
+
+      --status-warn-bg: rgba(245, 158, 11, 0.12);
+      --status-warn-border: rgba(245, 158, 11, 0.35);
+      --status-warn-text: #fcd34d;
+
+      --status-error-bg: rgba(244, 63, 94, 0.12);
+      --status-error-border: rgba(244, 63, 94, 0.35);
+      --status-error-text: #fda4af;
+
+      --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 22px;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      min-height: 100vh;
+      background-color: var(--bg-canvas);
+      background-image:
+        radial-gradient(circle at 12% 10%, rgba(99, 102, 241, 0.14) 0%, transparent 42%),
+        radial-gradient(circle at 88% 85%, rgba(6, 182, 212, 0.12) 0%, transparent 45%),
+        linear-gradient(180deg, #060913 0%, #080d1a 100%);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* =========================================================================
+       LAYOUT & HEADER
+       ========================================================================= */
+    .app-shell {
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 28px 18px 44px;
+      display: flex;
+      flex-direction: column;
+      gap: 26px;
+    }
+
+    @media (min-width: 768px) {
+      .app-shell {
+        padding: 40px 28px 56px;
+        gap: 32px;
+      }
+    }
+
+    .studio-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-logo {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(6, 182, 212, 0.25));
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 24px rgba(6, 182, 212, 0.15);
+      flex-shrink: 0;
+    }
+
+    .brand-title-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .brand-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+    }
+
+    @media (min-width: 640px) {
+      .brand-title {
+        font-size: 1.55rem;
+      }
+    }
+
+    .protocol-pill {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: rgba(99, 102, 241, 0.16);
+      border: 1px solid rgba(129, 140, 248, 0.32);
+      color: #c7d2fe;
+    }
+
+    .brand-subtitle {
+      font-size: 0.86rem;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .engine-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 13px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--border-subtle);
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.75);
+    }
+
+    /* =========================================================================
+       TWO-COLUMN STUDIO WORKSPACE GRID
+       ========================================================================= */
+    .workspace-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 22px;
+      align-items: start;
+    }
+
+    @media (min-width: 960px) {
+      .workspace-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 26px;
+      }
+    }
+
+    .studio-card {
+      background: var(--bg-panel);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: 22px;
+      box-shadow: 0 24px 50px -15px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    @media (min-width: 640px) {
+      .studio-card {
+        padding: 28px;
+        gap: 20px;
+      }
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .card-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .step-badge {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .step-badge.encrypt {
+      background: rgba(99, 102, 241, 0.2);
+      border: 1px solid rgba(129, 140, 248, 0.35);
+      color: #a5b4fc;
+    }
+
+    .step-badge.decrypt {
+      background: rgba(6, 182, 212, 0.18);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      color: #67e8f9;
+    }
+
+    .card-heading {
+      font-size: 1.08rem;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .card-desc {
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      margin-top: 3px;
+    }
+
+    /* =========================================================================
+       FORM ELEMENTS, COUNTERS & BUTTONS
+       ========================================================================= */
+    .field-top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .field-label {
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .counter-pill {
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      color: #7dd3fc;
+      background: rgba(14, 116, 144, 0.18);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      padding: 2px 9px;
+      border-radius: 999px;
+    }
+
+    .textarea-wrapper {
+      position: relative;
+    }
+
+    .phrase-textarea {
+      width: 100%;
+      min-height: 132px;
+      resize: vertical;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-lg);
+      padding: 14px 40px 14px 16px;
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 0.95rem;
+      line-height: 1.55;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .phrase-textarea::placeholder {
+      color: var(--text-muted);
+    }
+
+    .phrase-textarea:focus {
+      outline: none;
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.16);
+    }
+
+    .clear-input-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 28px;
+      height: 28px;
+      border: none;
+      border-radius: 8px;
+      background: rgba(30, 41, 59, 0.8);
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .clear-input-btn.visible {
+      display: inline-flex;
+    }
+
+    .clear-input-btn:hover {
+      background: #334155;
+      color: #ffffff;
+    }
+
+    .stego-meta-strip {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: var(--radius-md);
+      background: rgba(11, 17, 32, 0.72);
+      border: 1px solid var(--border-subtle);
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      color: var(--text-secondary);
+    }
+
+    .stego-meta-strip strong {
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+
+    /* Primary & Secondary Studio Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      min-height: 46px;
+      padding: 12px 20px;
+      border-radius: var(--radius-md);
+      font-family: var(--font-sans);
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: transform 0.12s ease, box-shadow 0.2s ease, background 0.2s ease, opacity 0.2s ease;
+      user-select: none;
+    }
+
+    .btn:active:not(:disabled) {
+      transform: scale(0.985);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      width: 100%;
+      background: linear-gradient(135deg, #4f46e5 0%, #0284c7 100%);
+      color: #ffffff;
+      box-shadow: 0 10px 26px -6px rgba(79, 70, 229, 0.48);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: linear-gradient(135deg, #6366f1 0%, #0ea5e9 100%);
+      box-shadow: 0 12px 30px -6px rgba(14, 165, 233, 0.55);
+    }
+
+    .btn-decrypt {
+      width: 100%;
+      background: linear-gradient(135deg, #0891b2 0%, #4f46e5 100%);
+      color: #ffffff;
+      box-shadow: 0 10px 26px -6px rgba(6, 182, 212, 0.42);
+    }
+
+    .btn-decrypt:hover:not(:disabled) {
+      background: linear-gradient(135deg, #06b6d4 0%, #6366f1 100%);
+      box-shadow: 0 12px 30px -6px rgba(99, 102, 241, 0.52);
+    }
+
+    .btn-ghost {
+      min-height: 34px;
+      padding: 6px 12px;
+      font-size: 0.78rem;
+      font-weight: 500;
+      background: rgba(30, 41, 59, 0.75);
+      border-color: var(--border-subtle);
+      color: var(--text-primary);
+      border-radius: var(--radius-sm);
+    }
+
+    .btn-ghost:hover:not(:disabled) {
+      background: rgba(51, 65, 85, 0.85);
+      border-color: var(--border-strong);
+    }
+
+    .btn-danger-ghost {
+      min-height: 32px;
+      padding: 5px 10px;
+      font-size: 0.76rem;
+      font-weight: 500;
+      background: rgba(244, 63, 94, 0.12);
+      border-color: rgba(244, 63, 94, 0.28);
+      color: #fda4af;
+      border-radius: var(--radius-sm);
+    }
+
+    .btn-danger-ghost:hover {
+      background: rgba(244, 63, 94, 0.22);
+    }
+
+    /* =========================================================================
+       DRAG & DROP INSERT BOX
+       ========================================================================= */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      border: 0;
+    }
+
+    .drop-zone {
+      border: 2px dashed rgba(100, 116, 139, 0.45);
+      border-radius: var(--radius-lg);
+      background: rgba(11, 17, 32, 0.65);
+      padding: 32px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .drop-zone:hover,
+    .drop-zone:focus-visible {
+      outline: none;
+      border-color: var(--accent-cyan-bright);
+      background: rgba(15, 23, 42, 0.88);
+    }
+
+    .drop-zone.drag-active {
+      border-color: var(--accent-cyan-bright);
+      background: rgba(6, 182, 212, 0.12);
+      transform: scale(1.01);
+    }
+
+    .drop-icon-circle {
+      width: 52px;
+      height: 52px;
+      border-radius: 15px;
+      background: rgba(30, 41, 59, 0.85);
+      border: 1px solid var(--border-strong);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #38bdf8;
+      transition: transform 0.2s ease;
+    }
+
+    .drop-zone:hover .drop-icon-circle {
+      transform: translateY(-2px);
+    }
+
+    .drop-primary-text {
+      font-size: 0.92rem;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .drop-primary-text span {
+      color: #38bdf8;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .drop-secondary-text {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    /* =========================================================================
+       AUDIO PREVIEW DECK & WAVEFORM VISUALIZER
+       ========================================================================= */
+    .audio-deck {
+      display: none;
+      flex-direction: column;
+      gap: 14px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+    }
+
+    .audio-deck.visible {
+      display: flex;
+    }
+
+    .deck-file-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .deck-file-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .deck-file-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: rgba(6, 182, 212, 0.14);
+      border: 1px solid rgba(56, 189, 248, 0.28);
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .deck-file-name {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .deck-file-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .format-tag {
+      padding: 1px 6px;
+      border-radius: 5px;
+      background: rgba(99, 102, 241, 0.2);
+      border: 1px solid rgba(129, 140, 248, 0.3);
+      color: #c7d2fe;
+      text-transform: uppercase;
+    }
+
+    .waveform-box {
+      position: relative;
+      width: 100%;
+      height: 92px;
+      border-radius: var(--radius-md);
+      background: #070b15;
+      border: 1px solid var(--border-subtle);
+      overflow: hidden;
+      cursor: pointer;
+    }
+
+    .waveform-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .waveform-hint {
+      position: absolute;
+      top: 6px;
+      right: 8px;
+      font-family: var(--font-mono);
+      font-size: 0.64rem;
+      color: var(--text-muted);
+      background: rgba(6, 9, 19, 0.8);
+      padding: 2px 6px;
+      border-radius: 4px;
+      pointer-events: none;
+    }
+
+    .transport-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .play-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 11px;
+      border: none;
+      background: linear-gradient(135deg, #38bdf8, #6366f1);
+      color: #060913;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: transform 0.12s ease, opacity 0.15s ease;
+    }
+
+    .play-btn:hover {
+      opacity: 0.92;
+    }
+
+    .play-btn:active {
+      transform: scale(0.94);
+    }
+
+    .time-readout {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      flex: 1;
+    }
+
+    .time-readout span {
+      color: var(--text-primary);
+    }
+
+    /* =========================================================================
+       STATUS BANNERS & DECRYPTED OUTPUT CARD
+       ========================================================================= */
+    .status-banner {
+      display: none;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: var(--radius-md);
+      font-size: 0.82rem;
+      line-height: 1.45;
+      border: 1px solid transparent;
+    }
+
+    .status-banner.visible {
+      display: flex;
+    }
+
+    .status-banner.success {
+      background: var(--status-success-bg);
+      border-color: var(--status-success-border);
+      color: var(--status-success-text);
+    }
+
+    .status-banner.warning {
+      background: var(--status-warn-bg);
+      border-color: var(--status-warn-border);
+      color: var(--status-warn-text);
+    }
+
+    .status-banner.error {
+      background: var(--status-error-bg);
+      border-color: var(--status-error-border);
+      color: var(--status-error-text);
+    }
+
+    .status-icon {
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .decrypted-card {
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      background: rgba(6, 12, 24, 0.92);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      box-shadow: 0 12px 28px -10px rgba(16, 185, 129, 0.18);
+    }
+
+    .decrypted-card.visible {
+      display: flex;
+    }
+
+    .decrypted-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .decrypted-label {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #6ee7b7;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .decrypted-output-box {
+      width: 100%;
+      min-height: 76px;
+      max-height: 200px;
+      overflow-y: auto;
+      padding: 12px 14px;
+      border-radius: var(--radius-md);
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--border-subtle);
+      color: #ffffff;
+      font-size: 0.96rem;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+      user-select: all;
+    }
+
+    .studio-footer {
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      padding-top: 6px;
+    }
+
+    /* Non-blocking Toast */
+    .toast-region {
+      position: fixed;
+      top: 18px;
+      right: 18px;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 340px;
+      pointer-events: none;
+    }
+
+    .toast-item {
+      pointer-events: auto;
+      background: rgba(15, 23, 42, 0.96);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      color: #f1f5f9;
+      padding: 11px 15px;
+      border-radius: 12px;
+      font-size: 0.82rem;
+      box-shadow: 0 14px 32px rgba(0, 0, 0, 0.55);
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      opacity: 0;
+      transform: translateY(-8px);
+      transition: opacity 0.22s ease, transform 0.22s ease;
+    }
+
+    .toast-item.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Toast Notification Region (No alert/confirm dialogs) -->
+  <div id="toastRegion" class="toast-region" aria-live="polite"></div>
+
+  <div class="app-shell">
+    <!-- =====================================================================
+         STUDIO HEADER
+         ===================================================================== -->
+    <header class="studio-header">
+      <div class="brand-group">
+        <div class="brand-logo" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 12h2" />
+            <path d="M6 8v8" />
+            <path d="M10 4v16" />
+            <path d="M14 7v10" />
+            <path d="M18 9v6" />
+            <path d="M22 12h-2" />
+          </svg>
+        </div>
+        <div>
+          <div class="brand-title-row">
+            <h1 class="brand-title">CipherWave Studio</h1>
+            <span class="protocol-pill">16-Bit PCM LSB</span>
+          </div>
+          <p class="brand-subtitle">Synthesize melodic WAV audio with hidden phrases &amp; decrypt steganographic tracks locally.</p>
+        </div>
+      </div>
+
+      <div class="engine-badge" role="status">
+        <span class="status-dot"></span>
+        <span id="studioEngineLabel">LOCAL DSP READY</span>
+      </div>
+    </header>
+
+    <!-- =====================================================================
+         MAIN TWO-COLUMN WORKSPACE
+         ===================================================================== -->
+    <main class="workspace-grid">
+
+      <!-- ===================================================================
+           SECTION 1: ENCRYPT / ENCODE
+           =================================================================== -->
+      <section class="studio-card" aria-labelledby="encryptHeading">
+        <div class="card-header">
+          <div>
+            <div class="card-title-wrap">
+              <span class="step-badge encrypt">01</span>
+              <h2 id="encryptHeading" class="card-heading">Encrypt / Encode</h2>
+            </div>
+            <p class="card-desc">Enter a secret phrase to synthesize a melodic 16-bit WAV file with embedded LSB bits.</p>
+          </div>
+        </div>
+
+        <div>
+          <div class="field-top-bar">
+            <label for="phraseInput" class="field-label">Secret Phrase</label>
+            <span id="liveCounter" class="counter-pill">0 chars &bull; 0 bytes</span>
+          </div>
+
+          <div class="textarea-wrapper">
+            <textarea
+              id="phraseInput"
+              class="phrase-textarea"
+              placeholder="Type your secret phrase or message here..."
+              spellcheck="false"
+            ></textarea>
+            <button
+              type="button"
+              id="clearPhraseBtn"
+              class="clear-input-btn"
+              title="Clear phrase"
+              aria-label="Clear phrase"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                <path d="M18 6 6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="stego-meta-strip">
+          <span>Output: <strong id="outputFilenameLabel">cipherwave-phrase.wav</strong></span>
+          <span>Payload: <strong id="payloadBitsLabel">96 header + 0 data bits</strong></span>
+        </div>
+
+        <button type="button" id="downloadAudioBtn" class="btn btn-primary">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          <span id="downloadBtnText">Download Audio File</span>
+        </button>
+
+        <div id="encryptStatusBanner" class="status-banner" role="status">
+          <svg class="status-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          <div id="encryptStatusText"></div>
+        </div>
+      </section>
+
+      <!-- ===================================================================
+           SECTION 2: DECRYPT / DECODE
+           =================================================================== -->
+      <section class="studio-card" aria-labelledby="decryptHeading">
+        <div class="card-header">
+          <div>
+            <div class="card-title-wrap">
+              <span class="step-badge decrypt">02</span>
+              <h2 id="decryptHeading" class="card-heading">Decrypt / Decode</h2>
+            </div>
+            <p class="card-desc">Drop an encoded 16-bit WAV audio file to inspect its waveform and extract the hidden phrase.</p>
+          </div>
+        </div>
+
+        <!-- Hidden Native File Input -->
+        <input
+          type="file"
+          id="audioFileInput"
+          accept="audio/*,.wav,.mp3,.ogg,.m4a,.flac"
+          class="sr-only"
+        />
+
+        <!-- Drag & Drop / Click-to-Insert Box -->
+        <div
+          id="dropZone"
+          class="drop-zone"
+          role="button"
+          tabindex="0"
+          aria-label="Drop an audio file here or click to browse"
+        >
+          <div class="drop-icon-circle" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+          </div>
+          <div>
+            <p class="drop-primary-text">Drag &amp; drop an audio file here, or <span>click to browse</span></p>
+            <p class="drop-secondary-text">Supports lossless 16-bit PCM WAV files for LSB decryption</p>
+          </div>
+        </div>
+
+        <!-- Audio Preview Deck with Waveform Visualization -->
+        <div id="audioDeck" class="audio-deck">
+          <div class="deck-file-header">
+            <div class="deck-file-info">
+              <div class="deck-file-icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M9 18V5l12-2v13" />
+                  <circle cx="6" cy="18" r="3" />
+                  <circle cx="18" cy="16" r="3" />
+                </svg>
+              </div>
+              <div style="min-width: 0;">
+                <div id="deckFileName" class="deck-file-name">audio.wav</div>
+                <div class="deck-file-meta">
+                  <span id="deckFormatTag" class="format-tag">WAV</span>
+                  <span id="deckFileSize">0 KB</span>
+                  <span>&bull;</span>
+                  <span id="deckPcmSpec">44.1 kHz</span>
+                </div>
+              </div>
+            </div>
+
+            <button type="button" id="removeFileBtn" class="btn btn-danger-ghost">
+              Remove
+            </button>
+          </div>
+
+          <!-- Waveform Canvas -->
+          <div id="waveformBox" class="waveform-box" title="Click anywhere on waveform to seek">
+            <canvas id="waveformCanvas" class="waveform-canvas"></canvas>
+            <span class="waveform-hint">CLICK WAVEFORM TO SEEK</span>
+          </div>
+
+          <!-- Transport Controls -->
+          <div class="transport-bar">
+            <button type="button" id="playPauseBtn" class="play-btn" aria-label="Play audio preview">
+              <svg id="iconPlay" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-left: 2px;">
+                <polygon points="5 3 19 12 5 21 5 3" />
+              </svg>
+              <svg id="iconPause" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
+                <rect x="6" y="4" width="4" height="16" rx="1" />
+                <rect x="14" y="4" width="4" height="16" rx="1" />
+              </svg>
+            </button>
+
+            <div class="time-readout">
+              <span id="currentTimeText">00:00</span> / <span id="totalTimeText">00:00</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Primary Decrypt CTA Button -->
+        <button type="button" id="decryptBtn" class="btn btn-decrypt" disabled>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+          </svg>
+          <span>Decrypt</span>
+        </button>
+
+        <!-- Decrypt Status Feedback Banner -->
+        <div id="decryptStatusBanner" class="status-banner" role="status">
+          <svg id="decryptStatusIcon" class="status-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <div id="decryptStatusText"></div>
+        </div>
+
+        <!-- Extracted Phrase Output Card -->
+        <div id="decryptedCard" class="decrypted-card">
+          <div class="decrypted-header">
+            <span class="decrypted-label">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              Decrypted Phrase
+            </span>
+
+            <button type="button" id="copyPhraseBtn" class="btn btn-ghost">
+              <svg id="copyIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+              <span id="copyBtnLabel">Copy</span>
+            </button>
+          </div>
+
+          <div id="decryptedOutputBox" class="decrypted-output-box" tabindex="0"></div>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="studio-footer">
+      100% client-side DSP &amp; binary RIFF/WAV LSB steganography. Zero external dependencies &mdash; your phrases and audio never leave your browser.
+    </footer>
+  </div>
+
+  <!-- Hidden HTML5 Audio Element for Preview Playback -->
+  <audio id="previewAudio" preload="metadata"></audio>
+
+  <script>
+    /**
+     * CipherWave — Audio Phrase Steganography Studio
+     * Pure Vanilla JS Implementation (Zero External Dependencies)
+     *
+     * Steganography Frame Protocol ("APS1" — Audio Phrase Stego v1):
+     * - Carrier: 16-bit Signed PCM Stereo WAV (44,100 Hz)
+     * - Embedding Capacity: 1 bit per 16-bit PCM sample (LSB bit 0)
+     * - Frame Header (12 bytes = 96 bits):
+     *     [0..3]  : ASCII "APS1" (0x41, 0x50, 0x53, 0x31)
+     *     [4..7]  : Payload Byte Length (Uint32 Big-Endian)
+     *     [8..11] : CRC-32 Checksum of Payload Bytes (Uint32 Big-Endian)
+     * - Frame Body:
+     *     [12 .. 12 + N - 1] : UTF-8 Encoded Phrase Bytes
+     */
+    (function () {
+      'use strict';
+
+      // =======================================================================
+      // DOM ELEMENT REFERENCES
+      // =======================================================================
+      const phraseInput = document.getElementById('phraseInput');
+      const clearPhraseBtn = document.getElementById('clearPhraseBtn');
+      const liveCounter = document.getElementById('liveCounter');
+      const outputFilenameLabel = document.getElementById('outputFilenameLabel');
+      const payloadBitsLabel = document.getElementById('payloadBitsLabel');
+      const downloadAudioBtn = document.getElementById('downloadAudioBtn');
+      const downloadBtnText = document.getElementById('downloadBtnText');
+      const encryptStatusBanner = document.getElementById('encryptStatusBanner');
+      const encryptStatusText = document.getElementById('encryptStatusText');
+
+      const audioFileInput = document.getElementById('audioFileInput');
+      const dropZone = document.getElementById('dropZone');
+      const audioDeck = document.getElementById('audioDeck');
+      const deckFileName = document.getElementById('deckFileName');
+      const deckFormatTag = document.getElementById('deckFormatTag');
+      const deckFileSize = document.getElementById('deckFileSize');
+      const deckPcmSpec = document.getElementById('deckPcmSpec');
+      const removeFileBtn = document.getElementById('removeFileBtn');
+
+      const waveformBox = document.getElementById('waveformBox');
+      const waveformCanvas = document.getElementById('waveformCanvas');
+      const waveCtx = waveformCanvas.getContext('2d');
+
+      const previewAudio = document.getElementById('previewAudio');
+      const playPauseBtn = document.getElementById('playPauseBtn');
+      const iconPlay = document.getElementById('iconPlay');
+      const iconPause = document.getElementById('iconPause');
+      const currentTimeText = document.getElementById('currentTimeText');
+      const totalTimeText = document.getElementById('totalTimeText');
+
+      const decryptBtn = document.getElementById('decryptBtn');
+      const decryptStatusBanner = document.getElementById('decryptStatusBanner');
+      const decryptStatusText = document.getElementById('decryptStatusText');
+      const decryptedCard = document.getElementById('decryptedCard');
+      const decryptedOutputBox = document.getElementById('decryptedOutputBox');
+      const copyPhraseBtn = document.getElementById('copyPhraseBtn');
+      const copyBtnLabel = document.getElementById('copyBtnLabel');
+
+      const toastRegion = document.getElementById('toastRegion');
+      const studioEngineLabel = document.getElementById('studioEngineLabel');
+
+      // =======================================================================
+      // APPLICATION STATE
+      // =======================================================================
+      const state = {
+        loadedFile: null,
+        loadedArrayBuffer: null,
+        objectUrl: null,
+        waveformPeaks: [],
+        rafId: null,
+        dragDepth: 0
+      };
+
+      const textEncoder = new TextEncoder();
+      const textDecoder = new TextDecoder('utf-8', { fatal: true });
+
+      // =======================================================================
+      // CRC-32 TABLE & CHECKSUM HELPER
+      // =======================================================================
+      const CRC32_TABLE = (() => {
+        const table = new Uint32Array(256);
+        for (let i = 0; i < 256; i++) {
+          let c = i;
+          for (let k = 0; k < 8; k++) {
+            c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+          }
+          table[i] = c >>> 0;
+        }
+        return table;
+      })();
+
+      function computeCrc32(uint8Array) {
+        let crc = 0xFFFFFFFF;
+        for (let i = 0; i < uint8Array.length; i++) {
+          crc = CRC32_TABLE[(crc ^ uint8Array[i]) & 0xFF] ^ (crc >>> 8);
+        }
+        return (crc ^ 0xFFFFFFFF) >>> 0;
+      }
+
+      // =======================================================================
+      // GENERAL UTILITIES
+      // =======================================================================
+      function showToast(message) {
+        const toast = document.createElement('div');
+        toast.className = 'toast-item';
+        toast.innerHTML = `
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          <span>${escapeHtml(message)}</span>
+        `;
+        toastRegion.appendChild(toast);
+        requestAnimationFrame(() => toast.classList.add('show'));
+        setTimeout(() => {
+          toast.classList.remove('show');
+          setTimeout(() => toast.remove(), 250);
+        }, 3200);
+      }
+
+      function escapeHtml(str) {
+        return str
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function formatDuration(sec) {
+        if (!Number.isFinite(sec) || sec < 0) return '00:00';
+        const m = Math.floor(sec / 60);
+        const s = Math.floor(sec % 60);
+        return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      }
+
+      function formatBytes(bytes) {
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+      }
+
+      function buildSafeFilename(phrase) {
+        const slug = phrase
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9\s-]/g, '')
+          .replace(/\s+/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '')
+          .slice(0, 42);
+        return slug ? `${slug}-encrypted.wav` : 'cipherwave-phrase.wav';
+      }
+
+      function setBanner(bannerEl, textEl, type, message) {
+        bannerEl.className = `status-banner visible ${type}`;
+        textEl.textContent = message;
+      }
+
+      function hideBanner(bannerEl) {
+        bannerEl.className = 'status-banner';
+      }
+
+      // =======================================================================
+      // SECTION 1: LIVE COUNTER & MELODIC 16-BIT WAV LSB SYNTHESIS
+      // =======================================================================
+      function updateEncryptMetrics() {
+        const text = phraseInput.value;
+        const charLen = Array.from(text).length;
+        const byteLen = textEncoder.encode(text).length;
+        const totalBits = (12 + byteLen) * 8;
+
+        liveCounter.textContent = `${charLen} ${charLen === 1 ? 'char' : 'chars'} • ${byteLen} ${byteLen === 1 ? 'byte' : 'bytes'}`;
+        clearPhraseBtn.classList.toggle('visible', text.length > 0);
+        outputFilenameLabel.textContent = buildSafeFilename(text);
+        payloadBitsLabel.textContent = `96 header + ${byteLen * 8} data bits (${totalBits} samples)`;
+      }
+
+      phraseInput.addEventListener('input', () => {
+        updateEncryptMetrics();
+        hideBanner(encryptStatusBanner);
+      });
+
+      clearPhraseBtn.addEventListener('click', () => {
+        phraseInput.value = '';
+        phraseInput.focus();
+        updateEncryptMetrics();
+        hideBanner(encryptStatusBanner);
+      });
+
+      /**
+       * Packs the "APS1" header, payload length, CRC-32, and UTF-8 bytes into a bit array.
+       */
+      function buildStegoBitStream(phrase) {
+        const payloadBytes = textEncoder.encode(phrase);
+        const crc32 = computeCrc32(payloadBytes);
+
+        const packet = new Uint8Array(12 + payloadBytes.length);
+        // Magic signature: "APS1"
+        packet[0] = 0x41; // 'A'
+        packet[1] = 0x50; // 'P'
+        packet[2] = 0x53; // 'S'
+        packet[3] = 0x31; // '1'
+
+        const headerView = new DataView(packet.buffer);
+        headerView.setUint32(4, payloadBytes.length, false);
+        headerView.setUint32(8, crc32, false);
+        packet.set(payloadBytes, 12);
+
+        const bits = new Uint8Array(packet.length * 8);
+        let bitIdx = 0;
+        for (let i = 0; i < packet.length; i++) {
+          const byte = packet[i];
+          for (let b = 7; b >= 0; b--) {
+            bits[bitIdx++] = (byte >>> b) & 1;
+          }
+        }
+        return { bits, byteCount: payloadBytes.length };
+      }
+
+      /**
+       * Synthesizes a lush, melodic stereo 16-bit PCM WAV file directly in memory,
+       * then losslessly embeds the steganographic bit stream into the LSBs of the
+       * quantized 16-bit PCM samples.
+       */
+      function synthesizeEncryptedWavBlob(phrase) {
+        const { bits, byteCount } = buildStegoBitStream(phrase);
+        const sampleRate = 44100;
+        const numChannels = 2;
+
+        // Calculate required duration: minimum 2.6 seconds for a pleasant musical phrase,
+        // or longer if the phrase payload requires additional carrier samples.
+        const minSamplesNeeded = Math.ceil((bits.length + 2048) / numChannels);
+        const minDurationFromBits = minSamplesNeeded / sampleRate;
+        const chars = Array.from(phrase);
+        const musicalNoteCount = Math.min(Math.max(chars.length, 6), 32);
+        const noteStep = 0.17;
+        const durationSec = Math.max(2.6, musicalNoteCount * noteStep + 1.15, minDurationFromBits);
+
+        const totalFrames = Math.ceil(durationSec * sampleRate);
+        const totalSamples = totalFrames * numChannels;
+
+        // Pentatonic / Lydian harmonic frequencies (Hz) for a warm studio synth arpeggio
+        const scale = [
+          261.63, // C4
+          293.66, // D4
+          329.63, // E4
+          392.00, // G4
+          440.00, // A4
+          523.25, // C5
+          587.33, // D5
+          659.25, // E5
+          783.99, // G5
+          880.00  // A5
+        ];
+
+        // Build note events derived deterministically from the phrase characters
+        const notes = [];
+        for (let i = 0; i < musicalNoteCount; i++) {
+          const ch = chars[i % chars.length];
+          const code = ch.codePointAt(0) || (65 + i);
+          const freq = scale[code % scale.length];
+          const start = 0.08 + i * noteStep;
+          const dur = 0.85;
+          const pan = musicalNoteCount > 1 ? ((i / (musicalNoteCount - 1)) * 0.9 - 0.45) : 0;
+          notes.push({ freq, start, dur, pan });
+        }
+
+        // Allocate 44-byte RIFF header + 16-bit PCM data buffer
+        const dataByteLength = totalSamples * 2;
+        const wavBuffer = new ArrayBuffer(44 + dataByteLength);
+        const view = new DataView(wavBuffer);
+
+        const writeFourCC = (offset, str) => {
+          for (let i = 0; i < 4; i++) {
+            view.setUint8(offset + i, str.charCodeAt(i));
+          }
+        };
+
+        // RIFF Header
+        writeFourCC(0, 'RIFF');
+        view.setUint32(4, 36 + dataByteLength, true);
+        writeFourCC(8, 'WAVE');
+
+        // fmt Sub-chunk (PCM 16-bit Stereo)
+        writeFourCC(12, 'fmt ');
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true); // PCM
+        view.setUint16(22, numChannels, true);
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, sampleRate * numChannels * 2, true);
+        view.setUint16(32, numChannels * 2, true);
+        view.setUint16(34, 16, true);
+
+        // data Sub-chunk Header
+        writeFourCC(36, 'data');
+        view.setUint32(40, dataByteLength, true);
+
+        // Synthesize audio frames, quantize to 16-bit signed PCM, and embed LSB bits
+        const TWO_PI = Math.PI * 2;
+        let bitCursor = 0;
+        let byteOffset = 44;
+
+        for (let frame = 0; frame < totalFrames; frame++) {
+          const t = frame / sampleRate;
+
+          // Warm ambient root chord (C3 + G3) with gentle fade-in and fade-out
+          const masterEnv =
+            Math.min(1, t / 0.15) *
+            Math.min(1, Math.max(0, (durationSec - t) / 0.45));
+
+          const rootBass =
+            Math.sin(TWO_PI * 130.81 * t) * 0.14 +
+            Math.sin(TWO_PI * 196.00 * t) * 0.08;
+
+          let leftMix = rootBass * masterEnv;
+          let rightMix = rootBass * masterEnv;
+
+          // Sum active melodic chime notes
+          for (let n = 0; n < notes.length; n++) {
+            const note = notes[n];
+            const dt = t - note.start;
+            if (dt >= 0 && dt < note.dur) {
+              const attack = Math.min(1, dt / 0.016);
+              const decay = Math.exp(-3.6 * dt);
+              const env = attack * decay;
+
+              // Fundamental + soft octave shimmer
+              const sig =
+                (Math.sin(TWO_PI * note.freq * dt) * 0.24 +
+                 Math.sin(TWO_PI * note.freq * 2 * dt) * 0.065) * env;
+
+              const leftGain = Math.cos((note.pan + 1) * Math.PI * 0.25);
+              const rightGain = Math.sin((note.pan + 1) * Math.PI * 0.25);
+
+              leftMix += sig * leftGain;
+              rightMix += sig * rightGain;
+            }
+          }
+
+          // Soft-clip limiter & quantize to signed 16-bit range [-32766, 32766]
+          const samples = [leftMix, rightMix];
+          for (let ch = 0; ch < 2; ch++) {
+            const clamped = Math.max(-0.95, Math.min(0.95, samples[ch]));
+            const int16Val = Math.round(clamped * 32000);
+            // Convert to 16-bit two's complement unsigned representation
+            let uint16Val = int16Val & 0xFFFF;
+
+            // Embed next steganography bit into LSB (bit 0)
+            if (bitCursor < bits.length) {
+              uint16Val = (uint16Val & 0xFFFE) | bits[bitCursor++];
+            }
+
+            view.setUint16(byteOffset, uint16Val, true);
+            byteOffset += 2;
+          }
+        }
+
+        return {
+          blob: new Blob([wavBuffer], { type: 'audio/wav' }),
+          durationSec,
+          totalBits: bits.length,
+          byteCount
+        };
+      }
+
+      downloadAudioBtn.addEventListener('click', () => {
+        const phrase = phraseInput.value;
+        if (!phrase || phrase.trim().length === 0) {
+          setBanner(
+            encryptStatusBanner,
+            encryptStatusText,
+            'warning',
+            'Please enter a phrase in the text box before generating the audio file.'
+          );
+          phraseInput.focus();
+          return;
+        }
+
+        try {
+          downloadAudioBtn.disabled = true;
+          downloadBtnText.textContent = 'Synthesizing WAV...';
+
+          const filename = buildSafeFilename(phrase);
+          const { blob, durationSec, totalBits, byteCount } = synthesizeEncryptedWavBlob(phrase);
+
+          const downloadUrl = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(downloadUrl), 400);
+
+          setBanner(
+            encryptStatusBanner,
+            encryptStatusText,
+            'success',
+            `Exported "${filename}" (${durationSec.toFixed(1)}s, 16-bit PCM WAV) with ${byteCount} UTF-8 bytes (${totalBits} LSB bits) embedded.`
+          );
+          studioEngineLabel.textContent = 'WAV ENCODED';
+          showToast(`Downloaded "${filename}"`);
+        } catch (err) {
+          console.error(err);
+          setBanner(
+            encryptStatusBanner,
+            encryptStatusText,
+            'error',
+            'Failed to synthesize encrypted WAV file.'
+          );
+        } finally {
+          downloadAudioBtn.disabled = false;
+          downloadBtnText.textContent = 'Download Audio File';
+        }
+      });
+
+      // =======================================================================
+      // SECTION 2: DRAG & DROP AUDIO INSERT, WAVEFORM VISUALIZER & DECRYPTOR
+      // =======================================================================
+
+      // Prevent default browser file-open behavior across window
+      window.addEventListener('dragover', (e) => e.preventDefault());
+      window.addEventListener('drop', (e) => e.preventDefault());
+
+      dropZone.addEventListener('click', () => audioFileInput.click());
+      dropZone.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          audioFileInput.click();
+        }
+      });
+
+      dropZone.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        state.dragDepth++;
+        dropZone.classList.add('drag-active');
+      });
+
+      dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+      });
+
+      dropZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        state.dragDepth = Math.max(0, state.dragDepth - 1);
+        if (state.dragDepth === 0) {
+          dropZone.classList.remove('drag-active');
+        }
+      });
+
+      dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        state.dragDepth = 0;
+        dropZone.classList.remove('drag-active');
+        const files = e.dataTransfer?.files;
+        if (files && files.length > 0) {
+          loadAudioFileForDecrypt(files[0]);
+        }
+      });
+
+      audioFileInput.addEventListener('change', (e) => {
+        const files = e.target.files;
+        if (files && files.length > 0) {
+          loadAudioFileForDecrypt(files[0]);
+        }
+      });
+
+      /**
+       * Parses RIFF/WAVE headers to inspect PCM metadata without modifying sample bits.
+       */
+      function inspectWavHeader(arrayBuffer) {
+        if (arrayBuffer.byteLength < 44) return null;
+        const view = new DataView(arrayBuffer);
+
+        const readTag = (off) =>
+          String.fromCharCode(
+            view.getUint8(off),
+            view.getUint8(off + 1),
+            view.getUint8(off + 2),
+            view.getUint8(off + 3)
+          );
+
+        if (readTag(0) !== 'RIFF' || readTag(8) !== 'WAVE') {
+          return null;
+        }
+
+        let offset = 12;
+        let fmtInfo = null;
+        let dataInfo = null;
+
+        while (offset + 8 <= arrayBuffer.byteLength) {
+          const chunkId = readTag(offset);
+          const chunkSize = view.getUint32(offset + 4, true);
+          const chunkDataStart = offset + 8;
+
+          if (chunkId === 'fmt ' && chunkDataStart + 16 <= arrayBuffer.byteLength) {
+            fmtInfo = {
+              audioFormat: view.getUint16(chunkDataStart, true),
+              numChannels: view.getUint16(chunkDataStart + 2, true),
+              sampleRate: view.getUint32(chunkDataStart + 4, true),
+              bitsPerSample: view.getUint16(chunkDataStart + 14, true)
+            };
+          } else if (chunkId === 'data') {
+            dataInfo = {
+              dataOffset: chunkDataStart,
+              dataSize: Math.min(chunkSize, arrayBuffer.byteLength - chunkDataStart)
+            };
+          }
+
+          if (fmtInfo && dataInfo) break;
+          // Advance to next word-aligned RIFF chunk
+          offset = chunkDataStart + chunkSize + (chunkSize % 2);
+        }
+
+        if (!fmtInfo || !dataInfo) return null;
+        return { ...fmtInfo, ...dataInfo };
+      }
+
+      /**
+       * Loads a dropped audio file, computes its waveform envelope, and prepares preview playback.
+       */
+      async function loadAudioFileForDecrypt(file) {
+        const isAudio = (file.type && file.type.startsWith('audio/')) ||
+          /\.(wav|mp3|ogg|m4a|aac|flac|webm)$/i.test(file.name);
+
+        if (!isAudio) {
+          setBanner(
+            decryptStatusBanner,
+            decryptStatusText,
+            'error',
+            'Unsupported file format. Please drop a valid audio file (WAV recommended).'
+          );
+          return;
+        }
+
+        try {
+          // Stop any existing playback
+          previewAudio.pause();
+          if (state.rafId) {
+            cancelAnimationFrame(state.rafId);
+            state.rafId = null;
+          }
+          if (state.objectUrl) {
+            URL.revokeObjectURL(state.objectUrl);
+          }
+
+          const arrayBuffer = await file.arrayBuffer();
+          state.loadedFile = file;
+          state.loadedArrayBuffer = arrayBuffer;
+          state.objectUrl = URL.createObjectURL(file);
+
+          const extMatch = file.name.match(/\.([a-zA-Z0-9]+)$/);
+          const ext = extMatch ? extMatch[1].toUpperCase() : 'AUDIO';
+          const wavMeta = inspectWavHeader(arrayBuffer);
+
+          deckFileName.textContent = file.name;
+          deckFormatTag.textContent = ext;
+          deckFileSize.textContent = formatBytes(file.size);
+          deckPcmSpec.textContent = wavMeta
+            ? `${(wavMeta.sampleRate / 1000).toFixed(1)} kHz • ${wavMeta.bitsPerSample}-bit ${wavMeta.numChannels === 2 ? 'Stereo' : 'Mono'}`
+            : 'Compressed Audio';
+
+          previewAudio.src = state.objectUrl;
+          currentTimeText.textContent = '00:00';
+          totalTimeText.textContent = '00:00';
+          updatePlayButtonUI(false);
+
+          // Reset previous decrypt output
+          decryptedCard.classList.remove('visible');
+          decryptedOutputBox.textContent = '';
+          hideBanner(decryptStatusBanner);
+
+          // Toggle dropZone -> audioDeck
+          dropZone.style.display = 'none';
+          audioDeck.classList.add('visible');
+          decryptBtn.disabled = false;
+          studioEngineLabel.textContent = 'FILE LOADED';
+
+          // Decode audio buffer solely for waveform envelope visualization
+          await computeWaveformPeaks(arrayBuffer.slice(0));
+          requestAnimationFrame(() => {
+            resizeWaveformCanvas();
+            drawWaveform(0);
+          });
+
+          showToast(`Loaded "${file.name}"`);
+        } catch (err) {
+          console.error(err);
+          setBanner(
+            decryptStatusBanner,
+            decryptStatusText,
+            'error',
+            'Could not read the selected audio file.'
+          );
+        }
+      }
+
+      /**
+       * Computes normalized amplitude peaks across 140 visual bins for waveform rendering.
+       */
+      async function computeWaveformPeaks(bufferCopy) {
+        try {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          const ctx = new AudioCtx();
+          const decoded = await ctx.decodeAudioData(bufferCopy);
+          await ctx.close();
+
+          const channelData = decoded.getChannelData(0);
+          const binCount = 140;
+          const blockSize = Math.max(1, Math.floor(channelData.length / binCount));
+          const peaks = new Float32Array(binCount);
+          let maxPeak = 0.001;
+
+          for (let i = 0; i < binCount; i++) {
+            const start = i * blockSize;
+            const end = Math.min(start + blockSize, channelData.length);
+            let sumSq = 0;
+            for (let j = start; j < end; j += 4) {
+              const v = channelData[j];
+              sumSq += v * v;
+            }
+            const rms = Math.sqrt(sumSq / Math.max(1, (end - start) / 4));
+            peaks[i] = rms;
+            if (rms > maxPeak) maxPeak = rms;
+          }
+
+          // Normalize peaks to [0.12 .. 0.96]
+          state.waveformPeaks = Array.from(peaks, (p) => Math.max(0.1, Math.min(0.96, p / maxPeak)));
+        } catch (_) {
+          // Fallback decorative envelope if browser cannot decode a niche codec
+          state.waveformPeaks = Array.from({ length: 140 }, (_, i) =>
+            0.2 + 0.65 * Math.abs(Math.sin(i * 0.18) * Math.cos(i * 0.07))
+          );
+        }
+      }
+
+      function resizeWaveformCanvas() {
+        if (!waveformBox || waveformBox.offsetParent === null) return;
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const rect = waveformBox.getBoundingClientRect();
+        waveformCanvas.width = Math.floor(rect.width * dpr);
+        waveformCanvas.height = Math.floor(rect.height * dpr);
+        waveCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+
+      window.addEventListener('resize', () => {
+        if (state.loadedFile) {
+          resizeWaveformCanvas();
+          const progress = previewAudio.duration ? previewAudio.currentTime / previewAudio.duration : 0;
+          drawWaveform(progress);
+        }
+      });
+
+      /**
+       * Renders the audio waveform with playback progress highlight and playhead cursor.
+       */
+      function drawWaveform(progressRatio = 0) {
+        const width = waveformBox.clientWidth;
+        const height = waveformBox.clientHeight;
+        if (!width || !height) return;
+
+        waveCtx.clearRect(0, 0, width, height);
+
+        const peaks = state.waveformPeaks;
+        if (!peaks || peaks.length === 0) return;
+
+        const barCount = peaks.length;
+        const gap = 2;
+        const barWidth = Math.max(1.5, (width - gap * (barCount - 1)) / barCount);
+        const playheadX = progressRatio * width;
+
+        for (let i = 0; i < barCount; i++) {
+          const x = i * (barWidth + gap);
+          const barHeight = Math.max(4, peaks[i] * (height * 0.78));
+          const y = (height - barHeight) / 2;
+          const isPlayed = x + barWidth * 0.5 <= playheadX;
+
+          waveCtx.fillStyle = isPlayed
+            ? '#38bdf8'
+            : 'rgba(148, 163, 184, 0.28)';
+
+          waveCtx.beginPath();
+          if (waveCtx.roundRect) {
+            waveCtx.roundRect(x, y, barWidth, barHeight, 2);
+          } else {
+            waveCtx.rect(x, y, barWidth, barHeight);
+          }
+          waveCtx.fill();
+        }
+
+        // Crisp Playhead Line
+        if (progressRatio > 0 && progressRatio < 1) {
+          waveCtx.strokeStyle = '#e0f2fe';
+          waveCtx.lineWidth = 1.5;
+          waveCtx.beginPath();
+          waveCtx.moveTo(playheadX, 6);
+          waveCtx.lineTo(playheadX, height - 6);
+          waveCtx.stroke();
+        }
+      }
+
+      // Click on waveform to seek
+      waveformBox.addEventListener('click', (e) => {
+        if (!Number.isFinite(previewAudio.duration) || previewAudio.duration <= 0) return;
+        const rect = waveformBox.getBoundingClientRect();
+        const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        previewAudio.currentTime = ratio * previewAudio.duration;
+        currentTimeText.textContent = formatDuration(previewAudio.currentTime);
+        drawWaveform(ratio);
+      });
+
+      function updatePlayButtonUI(isPlaying) {
+        iconPlay.style.display = isPlaying ? 'none' : 'block';
+        iconPause.style.display = isPlaying ? 'block' : 'none';
+        playPauseBtn.setAttribute('aria-label', isPlaying ? 'Pause audio preview' : 'Play audio preview');
+      }
+
+      function animateWaveformLoop() {
+        if (previewAudio.paused) return;
+        const ratio = previewAudio.duration ? previewAudio.currentTime / previewAudio.duration : 0;
+        currentTimeText.textContent = formatDuration(previewAudio.currentTime);
+        drawWaveform(ratio);
+        state.rafId = requestAnimationFrame(animateWaveformLoop);
+      }
+
+      playPauseBtn.addEventListener('click', async () => {
+        if (!state.loadedFile) return;
+        if (previewAudio.paused) {
+          try {
+            await previewAudio.play();
+          } catch (_) {
+            showToast('Unable to start audio playback.');
+          }
+        } else {
+          previewAudio.pause();
+        }
+      });
+
+      previewAudio.addEventListener('loadedmetadata', () => {
+        totalTimeText.textContent = formatDuration(previewAudio.duration);
+      });
+
+      previewAudio.addEventListener('play', () => {
+        updatePlayButtonUI(true);
+        animateWaveformLoop();
+      });
+
+      previewAudio.addEventListener('pause', () => {
+        updatePlayButtonUI(false);
+        if (state.rafId) {
+          cancelAnimationFrame(state.rafId);
+          state.rafId = null;
+        }
+      });
+
+      previewAudio.addEventListener('ended', () => {
+        updatePlayButtonUI(false);
+        currentTimeText.textContent = '00:00';
+        drawWaveform(0);
+      });
+
+      removeFileBtn.addEventListener('click', () => {
+        previewAudio.pause();
+        previewAudio.removeAttribute('src');
+        previewAudio.load();
+
+        if (state.rafId) {
+          cancelAnimationFrame(state.rafId);
+          state.rafId = null;
+        }
+        if (state.objectUrl) {
+          URL.revokeObjectURL(state.objectUrl);
+          state.objectUrl = null;
+        }
+
+        state.loadedFile = null;
+        state.loadedArrayBuffer = null;
+        state.waveformPeaks = [];
+        audioFileInput.value = '';
+
+        audioDeck.classList.remove('visible');
+        dropZone.style.display = 'flex';
+        decryptBtn.disabled = true;
+        decryptedCard.classList.remove('visible');
+        hideBanner(decryptStatusBanner);
+        studioEngineLabel.textContent = 'LOCAL DSP READY';
+      });
+
+      // =======================================================================
+      // LOSSLESS LSB STEGANOGRAPHY DECRYPTOR
+      // =======================================================================
+      function extractHiddenPhraseFromWav(arrayBuffer) {
+        const wavMeta = inspectWavHeader(arrayBuffer);
+        if (!wavMeta) {
+          return {
+            ok: false,
+            type: 'warning',
+            message: 'No hidden phrase found. This file is not an uncompressed RIFF/WAVE file (lossy formats like MP3/OGG strip LSB steganography).'
+          };
+        }
+
+        if (wavMeta.audioFormat !== 1 || wavMeta.bitsPerSample !== 16) {
+          return {
+            ok: false,
+            type: 'warning',
+            message: `Unsupported WAV encoding (${wavMeta.bitsPerSample}-bit, format ${wavMeta.audioFormat}). Expected 16-bit PCM WAV.`
+          };
+        }
+
+        const totalSamples = Math.floor(wavMeta.dataSize / 2);
+        if (totalSamples < 96) {
+          return {
+            ok: false,
+            type: 'warning',
+            message: 'Audio file is too short to contain an encrypted phrase header.'
+          };
+        }
+
+        const view = new DataView(arrayBuffer);
+        const readBitsToBytes = (startSample, byteCount) => {
+          const out = new Uint8Array(byteCount);
+          let sampleCursor = startSample;
+          for (let i = 0; i < byteCount; i++) {
+            let byteVal = 0;
+            for (let b = 0; b < 8; b++) {
+              const sampleWord = view.getUint16(wavMeta.dataOffset + sampleCursor * 2, true);
+              const lsb = sampleWord & 1;
+              byteVal = (byteVal << 1) | lsb;
+              sampleCursor++;
+            }
+            out[i] = byteVal;
+          }
+          return out;
+        };
+
+        // 1. Read 12-byte header (96 samples)
+        const headerBytes = readBitsToBytes(0, 12);
+        const magic = String.fromCharCode(headerBytes[0], headerBytes[1], headerBytes[2], headerBytes[3]);
+
+        if (magic !== 'APS1') {
+          return {
+            ok: false,
+            type: 'warning',
+            message: 'No encrypted phrase signature (APS1) detected in this WAV file.'
+          };
+        }
+
+        const headerView = new DataView(headerBytes.buffer);
+        const payloadLength = headerView.getUint32(4, false);
+        const expectedCrc = headerView.getUint32(8, false);
+
+        const requiredSamples = (12 + payloadLength) * 8;
+        if (payloadLength > 2_000_000 || requiredSamples > totalSamples) {
+          return {
+            ok: false,
+            type: 'error',
+            message: 'Corrupted steganography header: declared payload length exceeds audio sample capacity.'
+          };
+        }
+
+        // 2. Extract payload bytes & verify CRC-32 checksum
+        const payloadBytes = readBitsToBytes(96, payloadLength);
+        const actualCrc = computeCrc32(payloadBytes);
+
+        if (actualCrc !== expectedCrc) {
+          return {
+            ok: false,
+            type: 'error',
+            message: 'Integrity check failed (CRC-32 mismatch). The WAV audio samples may have been altered or re-encoded.'
+          };
+        }
+
+        // 3. Decode UTF-8 phrase
+        try {
+          const phrase = textDecoder.decode(payloadBytes);
+          return {
+            ok: true,
+            phrase,
+            byteLength: payloadLength
+          };
+        } catch (_) {
+          return {
+            ok: false,
+            type: 'error',
+            message: 'Extracted payload is not valid UTF-8 text.'
+          };
+        }
+      }
+
+      decryptBtn.addEventListener('click', () => {
+        if (!state.loadedArrayBuffer) {
+          setBanner(
+            decryptStatusBanner,
+            decryptStatusText,
+            'warning',
+            'Please insert an audio file first.'
+          );
+          return;
+        }
+
+        const result = extractHiddenPhraseFromWav(state.loadedArrayBuffer);
+
+        if (result.ok) {
+          decryptedOutputBox.textContent = result.phrase;
+          decryptedCard.classList.add('visible');
+          copyBtnLabel.textContent = 'Copy';
+
+          setBanner(
+            decryptStatusBanner,
+            decryptStatusText,
+            'success',
+            `Decrypted ${result.byteLength} UTF-8 bytes (${Array.from(result.phrase).length} chars) with verified CRC-32 integrity.`
+          );
+          studioEngineLabel.textContent = 'PHRASE DECRYPTED';
+          showToast('Hidden phrase decrypted successfully!');
+        } else {
+          decryptedCard.classList.remove('visible');
+          decryptedOutputBox.textContent = '';
+          setBanner(
+            decryptStatusBanner,
+            decryptStatusText,
+            result.type,
+            result.message
+          );
+        }
+      });
+
+      // =======================================================================
+      // CLIPBOARD COPY HANDLER (IFRAME-SAFE VIA execCommand('copy'))
+      // =======================================================================
+      copyPhraseBtn.addEventListener('click', () => {
+        const textToCopy = decryptedOutputBox.textContent;
+        if (!textToCopy) return;
+
+        const helperTextarea = document.createElement('textarea');
+        helperTextarea.value = textToCopy;
+        helperTextarea.setAttribute('readonly', '');
+        helperTextarea.style.position = 'fixed';
+        helperTextarea.style.left = '-9999px';
+        document.body.appendChild(helperTextarea);
+        helperTextarea.select();
+
+        let copied = false;
+        try {
+          copied = document.execCommand('copy');
+        } catch (_) {
+          copied = false;
+        }
+        document.body.removeChild(helperTextarea);
+
+        if (copied) {
+          copyBtnLabel.textContent = 'Copied!';
+          showToast('Decrypted phrase copied to clipboard.');
+          setTimeout(() => {
+            copyBtnLabel.textContent = 'Copy';
+          }, 2000);
+        } else {
+          showToast('Select the phrase text and press Ctrl+C / Cmd+C to copy.');
+        }
+      });
+
+      // Initialize counters on load
+      updateEncryptMetrics();
+    })();
+  </script>
+</body>
+</html>
