@@ -11,6 +11,8 @@ from __future__ import annotations
 import argparse
 import csv
 import sys
+import cv2
+import numpy as np
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -51,7 +53,6 @@ def load_markers(path: Path) -> list[list[list[int]]]:
 
 
 def order_corners(points):
-    import numpy as np
 
     points = np.asarray(points, dtype="float32").reshape(4, 2)
     sums = points.sum(axis=1)
@@ -64,13 +65,11 @@ def order_corners(points):
 
 
 def rotated(pattern, turns: int):
-    import numpy as np
 
     return np.rot90(np.asarray(pattern, dtype="uint8"), turns)
 
 
 def identify_marker(cell_bits, patterns: list[list[list[int]]], max_errors: int):
-    import numpy as np
 
     observed = np.asarray(cell_bits, dtype="uint8")
     templates = _MARKER_TEMPLATE_CACHE.get(id(patterns))
@@ -92,9 +91,6 @@ def identify_marker(cell_bits, patterns: list[list[list[int]]], max_errors: int)
 
 
 def sample_marker(gray, corners, patterns, max_errors):
-    import cv2
-    import numpy as np
-    import numpy as np
 
     destination = np.array(
         [[0, 0], [MARKER_SIZE, 0], [MARKER_SIZE, MARKER_SIZE], [0, MARKER_SIZE]],
@@ -112,8 +108,6 @@ def sample_marker(gray, corners, patterns, max_errors):
 
 
 def find_marker_detections(image, patterns, max_errors, min_area):
-    import cv2
-    import numpy as np
 
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (3, 3), 0)
@@ -146,8 +140,6 @@ def find_marker_detections(image, patterns, max_errors, min_area):
 
 
 def find_grid_detections(image, patterns, board_corners, max_errors):
-    import cv2
-    import numpy as np
 
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     board_space = np.array([[0, 0], [1, 0], [1, 1], [0, 1]], dtype="float32")
@@ -191,8 +183,6 @@ def find_grid_detections(image, patterns, board_corners, max_errors):
 
 
 def board_corners_from_image(image):
-    import cv2
-    import numpy as np
 
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     for finder in (
@@ -228,6 +218,14 @@ def board_corners_from_image(image):
 
     # Printed boards are usually neutral gray/white, while their surroundings
     # have more colour. Closing this mask bridges the alternating board squares.
+    for level in (110, 140, 170):
+        _, dark_board = cv2.threshold(gray, level, 255, cv2.THRESH_BINARY_INV)
+        dark_board = cv2.morphologyEx(dark_board, cv2.MORPH_CLOSE,
+                                      np.ones((25, 25), dtype="uint8"))
+        corners = largest_quadrilateral(dark_board)
+        if corners is not None:
+            return corners
+
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     neutral = (hsv[:, :, 1] < 70).astype("uint8") * 255
     neutral = cv2.morphologyEx(neutral, cv2.MORPH_CLOSE, np.ones((21, 21), dtype="uint8"))
@@ -243,7 +241,6 @@ def board_corners_from_image(image):
 
 
 def parse_corners(values):
-    import numpy as np
 
     try:
         return order_corners([[float(value) for value in point.split(",")] for point in values])
@@ -252,8 +249,6 @@ def parse_corners(values):
 
 
 def make_fen(image, detections, board_corners):
-    import cv2
-    import numpy as np
 
     source = np.asarray(board_corners, dtype="float32")
     target = np.array([[0, 0], [1, 0], [1, 1], [0, 1]], dtype="float32")
@@ -287,6 +282,36 @@ def make_fen(image, detections, board_corners):
     return "/".join(ranks)
 
 
+def rotate_image_and_corners(image, corners, turns):
+    import numpy as np
+
+    height, width = image.shape[:2]
+    rotated_image = np.rot90(image, turns).copy()
+    rotated_corners = np.asarray(corners, dtype="float32").copy()
+    old_height, old_width = height, width
+    for _ in range(turns):
+        rotated_corners = np.column_stack((old_height - 1 - rotated_corners[:, 1],
+                                            rotated_corners[:, 0]))
+        old_height, old_width = old_width, old_height
+    return rotated_image, order_corners(rotated_corners)
+
+
+def orientation_score(fen):
+    """Prefer orientations consistent with normal pawn movement direction."""
+    rows = fen.split("/")
+    score = 0
+    for row, rank in enumerate(rows):
+        expanded = []
+        for character in rank:
+            expanded.extend([None] * int(character) if character.isdigit() else [character])
+        for piece in expanded:
+            if piece == "p":
+                score += 7 - row
+            elif piece == "P":
+                score += row
+    return score
+
+
 def decode_image(
     image_path: str | Path,
     marker_file: str | Path | None = None,
@@ -294,14 +319,13 @@ def decode_image(
     min_area: float = 100.0,
     max_errors: int = 12,
     annotated: str | Path | None = None,
+    rotation: int | None = None,
 ) -> str:
     """Decode a chess position from an image path and return its FEN string.
 
     ``board_corners`` may contain four points in TL, TR, BR, BL order. If it is
     omitted, the board boundary is detected automatically.
     """
-    import cv2
-    import numpy as np
 
     image_path = Path(image_path)
     marker_path = Path(marker_file) if marker_file else DEFAULT_MARKER_FILE
@@ -309,11 +333,27 @@ def decode_image(
     if image is None:
         raise ValueError(f"could not read image: {image_path}")
     patterns = load_markers(marker_path)
-    corners = board_corners if board_corners is not None else board_corners_from_image(image)
-    corners = np.asarray(corners, dtype="float32")
-    detections = find_grid_detections(image, patterns, corners, max_errors)
-    if not detections:
-        detections = find_marker_detections(image, patterns, max_errors, min_area)
+    if rotation is not None and rotation not in range(4):
+        raise ValueError("rotation must be one of 0, 1, 2, or 3")
+
+    candidates = []
+    turns_to_try = (rotation,) if rotation is not None else range(4)
+    for turns in turns_to_try:
+        oriented_image = np.rot90(image, turns).copy()
+        if board_corners is None:
+            oriented_corners = board_corners_from_image(oriented_image)
+        else:
+            _, oriented_corners = rotate_image_and_corners(image, board_corners, turns)
+        detections = find_grid_detections(oriented_image, patterns, oriented_corners,
+                          max_errors)
+        if not detections:
+            detections = find_marker_detections(oriented_image, patterns, max_errors, min_area)
+        fen = make_fen(oriented_image, detections, oriented_corners)
+        candidates.append((orientation_score(fen), len(detections),
+                           -sum(detection.score for detection in detections),
+                           oriented_image, oriented_corners, detections, fen))
+
+    _, _, _, image, corners, detections, fen = max(candidates, key=lambda candidate: candidate[:3])
 
     if annotated is not None:
         annotated_path = Path(annotated)
@@ -326,7 +366,7 @@ def decode_image(
         if not cv2.imwrite(str(annotated_path), image):
             raise OSError(f"could not write annotated image: {annotated_path}")
 
-    return make_fen(image, detections, corners)
+    return fen
 
 
 def main() -> int:
@@ -341,6 +381,8 @@ def main() -> int:
                         help="maximum differing cells allowed when matching a marker")
     parser.add_argument("--annotated", type=Path,
                         help="write a diagnostic image with detections and board corners")
+    parser.add_argument("--rotation", type=int, choices=range(4),
+                        help="rotate image counter-clockwise by 90-degree turns; default auto")
     args = parser.parse_args()
 
     try:
@@ -352,7 +394,7 @@ def main() -> int:
     try:
         corners = parse_corners(args.board_corners) if args.board_corners else None
         print(decode_image(args.image, args.markers, corners, args.min_area,
-                           args.max_errors, args.annotated))
+                           args.max_errors, args.annotated, args.rotation))
     except (OSError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
