@@ -17,6 +17,8 @@ from pathlib import Path
 
 MARKER_SIZE = 9
 PIECE_SYMBOLS = "kqrbnpKQRBNP"
+_MARKER_TEMPLATE_CACHE = {}
+DEFAULT_MARKER_FILE = Path(__file__).with_name("data-files") / "custom_markers.csv"
 
 
 @dataclass
@@ -71,15 +73,19 @@ def identify_marker(cell_bits, patterns: list[list[list[int]]], max_errors: int)
     import numpy as np
 
     observed = np.asarray(cell_bits, dtype="uint8")
-    candidates = []
-    for marker_id, pattern in enumerate(patterns):
-        for turns in range(4):
-            rotated_pattern = rotated(pattern, turns)
-            for inverted in (False, True):
-                expected = 1 - rotated_pattern if inverted else rotated_pattern
-                score = int(np.count_nonzero(observed != expected))
-                candidates.append((score, marker_id))
-    score, marker_id = min(candidates)
+    templates = _MARKER_TEMPLATE_CACHE.get(id(patterns))
+    if templates is None:
+        templates = []
+        for marker_id, pattern in enumerate(patterns):
+            for turns in range(4):
+                rotated_pattern = rotated(pattern, turns)
+                templates.append((marker_id, rotated_pattern, False))
+                templates.append((marker_id, 1 - rotated_pattern, True))
+        _MARKER_TEMPLATE_CACHE[id(patterns)] = templates
+    score, marker_id, _ = min(
+        (int(np.count_nonzero(observed != expected)), marker_id, inverted)
+        for marker_id, expected, inverted in templates
+    )
     if score > max_errors:
         return None
     return PIECE_SYMBOLS[marker_id], score
@@ -146,31 +152,38 @@ def find_grid_detections(image, patterns, board_corners, max_errors):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     board_space = np.array([[0, 0], [1, 0], [1, 1], [0, 1]], dtype="float32")
     board_to_image = cv2.getPerspectiveTransform(board_space, board_corners)
+    rectified_space = np.array([[0, 0], [959, 0], [959, 959], [0, 959]], dtype="float32")
+    image_to_board = cv2.getPerspectiveTransform(board_corners, rectified_space)
+    rectified = cv2.warpPerspective(gray, image_to_board, (960, 960))
     detections: list[Detection] = []
     for row in range(8):
         for column in range(8):
             best = None
-            for fraction in (0.5, 0.55, 2.0 / 3.0, 0.75, 0.85, 0.95):
+            for fraction in np.arange(0.4, 0.91, 0.05):
                 inset = (1.0 - fraction) / 2.0
-                left = (column + inset) / 8.0
-                top = (row + inset) / 8.0
-                right = (column + 1.0 - inset) / 8.0
-                bottom = (row + 1.0 - inset) / 8.0
-                square = np.array(
-                    [[left, top], [right, top], [right, bottom], [left, bottom]],
-                    dtype="float32",
-                )
-                corners = cv2.perspectiveTransform(square[None, :, :], board_to_image)[0]
-                marker_matrix = cv2.getPerspectiveTransform(
-                    corners,
-                    np.array([[0, 0], [90, 0], [90, 90], [0, 90]], dtype="float32"),
-                )
-                warped = cv2.warpPerspective(gray, marker_matrix, (90, 90))
-                warped = cv2.resize(warped, (9, 9), interpolation=cv2.INTER_AREA)
-                _, bits = cv2.threshold(warped, 0, 1, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-                match = identify_marker(bits, patterns, max_errors)
-                if match is not None and (best is None or match[1] < best[0]):
-                    best = (match[1], match[0], corners)
+                for offset_x in np.arange(-0.08, 0.081, 0.04):
+                    for offset_y in np.arange(-0.08, 0.081, 0.04):
+                        left = (column + inset + offset_x) / 8.0
+                        top = (row + inset + offset_y) / 8.0
+                        right = (column + 1.0 - inset + offset_x) / 8.0
+                        bottom = (row + 1.0 - inset + offset_y) / 8.0
+                        square = np.array(
+                            [[left, top], [right, top], [right, bottom], [left, bottom]],
+                            dtype="float32",
+                        )
+                        corners = cv2.perspectiveTransform(square[None, :, :], board_to_image)[0]
+                        source_left = max(0, round(left * 960))
+                        source_top = max(0, round(top * 960))
+                        source_right = min(960, round(right * 960))
+                        source_bottom = min(960, round(bottom * 960))
+                        warped = cv2.resize(
+                            rectified[source_top:source_bottom, source_left:source_right],
+                            (9, 9), interpolation=cv2.INTER_AREA,
+                        )
+                        _, bits = cv2.threshold(warped, 0, 1, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+                        match = identify_marker(bits, patterns, max_errors)
+                        if match is not None and (best is None or match[1] < best[0]):
+                            best = (match[1], match[0], corners)
             if best is not None:
                 center = tuple(np.mean(best[2], axis=0).tolist())
                 detections.append(Detection(best[1], center, best[2], best[0]))
@@ -291,7 +304,7 @@ def decode_image(
     import numpy as np
 
     image_path = Path(image_path)
-    marker_path = Path("./main-submission/data-files/custom_markers.csv")
+    marker_path = Path(marker_file) if marker_file else DEFAULT_MARKER_FILE
     image = cv2.imread(str(image_path))
     if image is None:
         raise ValueError(f"could not read image: {image_path}")
@@ -320,7 +333,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("image", type=Path, help="photograph containing the chessboard")
     parser.add_argument("-m", "--markers", type=Path,
-                        default=Path(__file__).with_name("custom_markers.csv"))
+                        default=DEFAULT_MARKER_FILE)
     parser.add_argument("--board-corners", nargs=4, metavar="X,Y",
                         help="board corners in FEN order: TL TR BR BL")
     parser.add_argument("--min-area", type=float, default=100.0)
