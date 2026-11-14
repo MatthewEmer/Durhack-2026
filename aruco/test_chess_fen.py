@@ -82,8 +82,8 @@ class ChessFenTests(unittest.TestCase):
             placements[(6, column)] = 5
             placements[(7, column)] = marker_id
         expected = self.expected_fen([
-            "rnbqkbnr", "pppppppp", "........", "........",
-            "........", "........", "PPPPPPPP", "RNBQKBNR",
+            "RNBQKBNR", "PPPPPPPP", "........", "........",
+            "........", "........", "pppppppp", "rnbqkbnr",
         ])
         self.assertEqual(self.decode(self.render_board(placements)), expected)
 
@@ -94,7 +94,7 @@ class ChessFenTests(unittest.TestCase):
             for column in range(6)
         }
         rotations = {(row, column): (row + column) % 4 for row, column in placements}
-        expected_rows = ["KQRBNP2"] + ["........"] * 6 + ["kqrbnp2"]
+        expected_rows = ["kqrbnp2"] + ["........"] * 6 + ["KQRBNP2"]
         self.assertEqual(
             self.decode(self.render_board(placements, rotations)),
             self.expected_fen(expected_rows),
@@ -110,7 +110,7 @@ class ChessFenTests(unittest.TestCase):
             (7, 7): 5,
         }
         expected_rows = [
-            "4k3", "8", "3B4", "5p2", "2K5", "6r1", "8", "7P",
+            "4K3", "8", "3b4", "5P2", "2k5", "6R1", "8", "7p",
         ]
         self.assertEqual(self.decode(self.render_board(placements)), self.expected_fen(expected_rows))
 
@@ -123,7 +123,7 @@ class ChessFenTests(unittest.TestCase):
         destination = np.array([[70, 40], [1060, 20], [1100, 1010], [30, 1040]], dtype=np.float32)
         transform = cv2.getPerspectiveTransform(source, destination)
         image = cv2.warpPerspective(self.render_board(placements), transform, (1130, 1080), borderValue=(255, 255, 255))
-        expected_rows = ["K7", "1q6", "2Q5", "3r4", "4R3", "5b2", "6B1", "7n"]
+        expected_rows = ["k7", "1Q6", "2q5", "3R4", "4r3", "5B2", "6b1", "7N"]
         self.assertEqual(self.decode(image, destination), self.expected_fen(expected_rows))
 
     def test_fen_generator_round_trip(self):

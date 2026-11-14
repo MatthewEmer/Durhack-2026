@@ -2,8 +2,8 @@
 """Detect the custom 9x9 chess-piece markers in a photograph and print FEN.
 
 The marker file contains one 9x9 bitmap per line, encoded row-by-row as hex.
-The first six markers are white pieces (K, Q, R, B, N, P); the last six are
-the corresponding black pieces (k, q, r, b, n, p).
+The first six markers are black pieces (k, q, r, b, n, p); the last six are
+the corresponding white pieces (K, Q, R, B, N, P).
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from pathlib import Path
 
 
 MARKER_SIZE = 9
-PIECE_SYMBOLS = "KQRBNPkqrbnp"
+PIECE_SYMBOLS = "kqrbnpKQRBNP"
 
 
 @dataclass
