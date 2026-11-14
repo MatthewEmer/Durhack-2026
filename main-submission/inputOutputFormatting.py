@@ -1,4 +1,6 @@
 def GetWords():
+    wordsFilePath = "./main-submission/data-files/durham_word_list.csv"
+
     print("Enter the phrase you want to send.")
     phrase = input(": ").lower()
     words = phrase.split(' ')
@@ -7,6 +9,8 @@ def GetWords():
 
 
 def GetFens():
+    fensFilePath = "./main-submission/data-files/fen_list.txt"
+
     print("Enter the fens you want to send, separated by spaces.")
     userInput = input(": ")
     fens = userInput.split(' ')
@@ -15,7 +19,7 @@ def GetFens():
 
 
 def GetImgs():
-    imageFilePath = "./main-submission/Images/"
+    imageFilePath = "./main-submission/images/"
 
     print("Enter the images you want to decode, separated by spaces. ")
     userInput = input(": ")

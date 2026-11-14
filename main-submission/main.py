@@ -1,12 +1,9 @@
 ## Importing files.
 
-from boardGenerator import ChessBoard
-from boardGenerator import defaultBoardState
+from boardGenerator import ChessBoard, defaultBoardState
 from mapping import WordstoFensConverter
 from inputOutputFormatting import *
 from chess_fen import decode_image
-
-import sys
 
 ##
 

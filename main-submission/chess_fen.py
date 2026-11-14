@@ -291,7 +291,7 @@ def decode_image(
     import numpy as np
 
     image_path = Path(image_path)
-    marker_path = Path(marker_file) if marker_file else Path(__file__).with_name("custom_markers.csv")
+    marker_path = "./main-submission/data-files/custom_markers.csv"
     image = cv2.imread(str(image_path))
     if image is None:
         raise ValueError(f"could not read image: {image_path}")
