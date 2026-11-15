@@ -5,3 +5,5 @@
 ## Description
 
 TO BE ADDED
+
+yo matthew why dont you make it into a website where you can drag the images into a box or something that would be cool, also if you have time maybe print out more chess pieces or try out more decoding
