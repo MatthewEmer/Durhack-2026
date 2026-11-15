@@ -90,15 +90,12 @@ def identify_marker(cell_bits, patterns: list[list[list[int]]], max_errors: int)
     return PIECE_SYMBOLS[marker_id], score
 
 
-def sample_marker(gray, corners, patterns, max_errors):
+def sample_marker(gray, corners, patterns, max_errors, warped, thresholded):
 
     destination = np.array(
         [[0, 0], [MARKER_SIZE, 0], [MARKER_SIZE, MARKER_SIZE], [0, MARKER_SIZE]],
         dtype="float32",
     )
-    matrix = cv2.getPerspectiveTransform(corners, destination)
-    warped = cv2.warpPerspective(gray, matrix, (MARKER_SIZE, MARKER_SIZE))
-    _, thresholded = cv2.threshold(warped, 0, 1, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     result = identify_marker(thresholded, patterns, max_errors)
     if result is None:
         # A marker may be printed with the opposite foreground convention.
@@ -116,6 +113,9 @@ def find_marker_detections(image, patterns, max_errors, min_area):
         cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
                               cv2.THRESH_BINARY, 31, 5),
     ]
+    matrix = cv2.getPerspectiveTransform(corners, destination)
+    warped = cv2.warpPerspective(gray, matrix, (MARKER_SIZE, MARKER_SIZE))
+    _, thresholded = cv2.threshold(warped, 0, 1, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     detections: list[Detection] = []
     for binary in binary_images:
         contours, _ = cv2.findContours(binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
@@ -128,7 +128,7 @@ def find_marker_detections(image, patterns, max_errors, min_area):
             if len(polygon) != 4 or not cv2.isContourConvex(polygon):
                 continue
             corners = order_corners(polygon.reshape(4, 2))
-            marker = sample_marker(gray, corners, patterns, max_errors)
+            marker = sample_marker(gray, corners, patterns, max_errors, warped, thresholded)
             if marker is None:
                 continue
             center = tuple(np.mean(corners, axis=0).tolist())
@@ -139,43 +139,54 @@ def find_marker_detections(image, patterns, max_errors, min_area):
     return detections
 
 
-def find_grid_detections(image, patterns, board_corners, max_errors):
-
+def rectify_board(image, board_corners, size=960):
+    """Perspective-correct the board once for fast square sampling."""
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    target = np.array(
+        [[0, 0], [size - 1, 0], [size - 1, size - 1], [0, size - 1]],
+        dtype="float32",
+    )
+    matrix = cv2.getPerspectiveTransform(
+        np.asarray(board_corners, dtype="float32"), target
+    )
+    return cv2.warpPerspective(gray, matrix, (size, size))
+
+
+def find_grid_detections(image, patterns, board_corners, max_errors, rectified=None):
+
     board_space = np.array([[0, 0], [1, 0], [1, 1], [0, 1]], dtype="float32")
     board_to_image = cv2.getPerspectiveTransform(board_space, board_corners)
-    rectified_space = np.array([[0, 0], [959, 0], [959, 959], [0, 959]], dtype="float32")
-    image_to_board = cv2.getPerspectiveTransform(board_corners, rectified_space)
-    rectified = cv2.warpPerspective(gray, image_to_board, (960, 960))
+    if rectified is None:
+        rectified = rectify_board(image, board_corners)
     detections: list[Detection] = []
     for row in range(8):
         for column in range(8):
             best = None
-            for fraction in np.arange(0.5, 0.66, 0.05):
-                inset = (1.0 - fraction) / 2.0
-                for offset_x in np.arange(-0.04, 0.041, 0.04):
-                    for offset_y in np.arange(-0.04, 0.041, 0.04):
-                        left = (column + inset + offset_x) / 8.0
-                        top = (row + inset + offset_y) / 8.0
-                        right = (column + 1.0 - inset + offset_x) / 8.0
-                        bottom = (row + 1.0 - inset + offset_y) / 8.0
-                        square = np.array(
-                            [[left, top], [right, top], [right, bottom], [left, bottom]],
-                            dtype="float32",
-                        )
-                        corners = cv2.perspectiveTransform(square[None, :, :], board_to_image)[0]
-                        source_left = max(0, round(left * 960))
-                        source_top = max(0, round(top * 960))
-                        source_right = min(960, round(right * 960))
-                        source_bottom = min(960, round(bottom * 960))
-                        warped = cv2.resize(
-                            rectified[source_top:source_bottom, source_left:source_right],
-                            (9, 9), interpolation=cv2.INTER_AREA,
-                        )
-                        _, bits = cv2.threshold(warped, 0, 1, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-                        match = identify_marker(bits, patterns, max_errors)
-                        if match is not None and (best is None or match[1] < best[0]):
-                            best = (match[1], match[0], corners)
+            fraction = 0.66
+            inset = (1.0 - fraction) / 2.0
+            for offset_x in np.arange(-0.08, 0.081, 0.04):
+                for offset_y in np.arange(-0.08, 0.081, 0.04):
+                    left = (column + inset + offset_x) / 8.0
+                    top = (row + inset + offset_y) / 8.0
+                    right = (column + 1.0 - inset + offset_x) / 8.0
+                    bottom = (row + 1.0 - inset + offset_y) / 8.0
+                    square = np.array(
+                        [[left, top], [right, top], [right, bottom], [left, bottom]],
+                        dtype="float32",
+                    )
+                    corners = cv2.perspectiveTransform(square[None, :, :], board_to_image)[0]
+                    source_left = max(0, round(left * 960))
+                    source_top = max(0, round(top * 960))
+                    source_right = min(960, round(right * 960))
+                    source_bottom = min(960, round(bottom * 960))
+                    warped = cv2.resize(
+                        rectified[source_top:source_bottom, source_left:source_right],
+                        (9, 9), interpolation=cv2.INTER_AREA,
+                    )
+                    _, bits = cv2.threshold(warped, 0, 1, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+                    match = identify_marker(bits, patterns, max_errors)
+                    if match is not None and (best is None or match[1] < best[0]):
+                        best = (match[1], match[0], corners)
             if best is not None:
                 center = tuple(np.mean(best[2], axis=0).tolist())
                 detections.append(Detection(best[1], center, best[2], best[0]))
@@ -336,15 +347,14 @@ def decode_image(
         raise ValueError("rotation must be one of 0, 1, 2, or 3")
 
     candidates = []
-    turns_to_try = range(4)
+    turns_to_try = (rotation,) if rotation is not None else range(4)
     for turns in turns_to_try:
         oriented_image = np.rot90(image, turns).copy()
-        if board_corners is None:
-            oriented_corners = board_corners_from_image(oriented_image)
-        else:
-            _, oriented_corners = rotate_image_and_corners(image, board_corners, turns)
-        detections = find_grid_detections(oriented_image, patterns, oriented_corners,
-                          max_errors)
+        oriented_corners = board_corners_from_image(oriented_image)
+        rectified = rectify_board(oriented_image, oriented_corners)
+        detections = find_grid_detections(
+            oriented_image, patterns, oriented_corners, max_errors, rectified
+        )
         if not detections:
             detections = find_marker_detections(oriented_image, patterns, max_errors, min_area)
         fen = make_fen(oriented_image, detections, oriented_corners)
