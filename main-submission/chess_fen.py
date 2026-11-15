@@ -196,8 +196,9 @@ def find_grid_detections(image, patterns, board_corners, max_errors, rectified=N
 def board_corners_from_image(image):
 
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    '''
     for finder in (
-        lambda: cv2.findChessboardCornersSB(gray, (7, 7), cv2.CALIB_CB_EXHAUSTIVE),
+        #lambda: cv2.findChessboardCornersSB(gray, (7, 7), cv2.CALIB_CB_EXHAUSTIVE),
         lambda: cv2.findChessboardCorners(gray, (7, 7)),
     ):
         found, corners = finder()
@@ -212,7 +213,7 @@ def board_corners_from_image(image):
                 inner[2] + horizontal + vertical,
                 inner[3] - horizontal + vertical,
             ])
-
+    '''
     def largest_quadrilateral(mask):
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         candidates = []
@@ -226,7 +227,6 @@ def board_corners_from_image(image):
         if candidates:
             return order_corners(max(candidates, key=lambda candidate: candidate[0])[1])
         return None
-
     # Printed boards are usually neutral gray/white, while their surroundings
     # have more colour. Closing this mask bridges the alternating board squares.
     for level in (110, 140, 170):
