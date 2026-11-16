@@ -2,6 +2,8 @@
 
 ![GitHub License](https://img.shields.io/github/license/MatthewEmer/Durhack-2026) ![GitHub language count](https://img.shields.io/github/languages/count/MatthewEmer/Durhack-2026) ![GitHub top language](https://img.shields.io/github/languages/top/MatthewEmer/Durhack-2026) ![Repo Size](https://img.shields.io/github/repo-size/MatthewEmer/Durhack-2026) ![GitHub last commit](https://img.shields.io/github/last-commit/MatthewEmer/Durhack-2026)
 
+[See the Devpost page here](https://devpost.com/software/chess-encoding).
+
 ## What It Does
 
 It takes the word list given for the QRT challenge, and assigns each a FEN board string. You can either encode words into FEN strings, which are then displayed to be re-created on physical boards, or you can upload images of the physical boards to decode to the original word.
